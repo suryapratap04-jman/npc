@@ -1,4 +1,98 @@
-implementation/
-rawData/
-cleanedData/
+# ==============================================================================
+# AI RESOURCE MANAGEMENT PLATFORM - GITIGNORE
+# ==============================================================================
+
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
 .env
+.venv
+venv/
+ENV/
+env/
+guessing_game/
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+test-reports/
+
+# Node / npm / Next.js
+node_modules/
+/frontend/node_modules/
+.next/
+/frontend/.next/
+out/
+/frontend/out/
+.npm
+.yarn-integrity
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Databases local storage (PostgreSQL / Qdrant)
+postgres_data/
+qdrant_data/
+ollama_data/
+*.db
+*.sqlite3
+
+# IDE / OS files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Project-specific ignored folders
+datasets/raw/
+datasets/cleaned/
+datasets/reports/
+datasets/experiments/
+/rawData/
+/cleanedData/
+/experiments/
+/implementation/
+/scratch/
+cleaning/reports/
+cleaning/cleaning_log.txt
+cleaning/validation_report.txt
+docs/archive
+
+# Temp/debug files
+scratch/
+scripts/scratch/
+*.bak
+*.tmp
+*.temp

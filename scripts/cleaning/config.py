@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 
 # Paths
-BASE_DIR = Path(r"c:\Users\SuryaPratapSingh\Documents\project")
-RAW_DIR = BASE_DIR / "rawData"
-CLEANED_DIR = BASE_DIR / "cleanedData"
-CLEANING_DIR = BASE_DIR / "cleaning"
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+RAW_DIR = BASE_DIR / "datasets" / "raw"
+CLEANED_DIR = BASE_DIR / "datasets" / "cleaned"
+CLEANING_DIR = BASE_DIR / "scripts" / "cleaning"
 REPORTS_DIR = CLEANING_DIR / "reports"
 
 # Ensure directories exist

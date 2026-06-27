@@ -1,188 +1,196 @@
-# AI-Powered Resource Recommendation System Platform
+# AI Resource Management API Platform
 
-This repository houses the AI platform infrastructure supporting semantic resource matching, skills searching, allocation optimization, and Retrieval-Augmented Generation (RAG) QA.
-
-The system integrates a relational database (PostgreSQL 16) with a semantic vector space database (Qdrant) and a local LLM orchestrator (Ollama running Qwen2.5 7B), exposed via a FastAPI REST backend.
+An enterprise-grade, decision-intelligence platform that integrates relational storage, semantic vector search, and local LLM orchestration to automate candidate staffing recommendations, analyze delivery risks, and simulate operational capacity.
 
 ---
 
-## Architecture Overview
+## 1. Project Overview
 
-```
-                      +-------------------+
-                      |   Client / UI     |
-                      +---------+---------+
-                                |
-                                v
-                      +---------+---------+
-                      |  FastAPI Backend  | (Port 8000)
-                      +----+----+----+----+
-                           |    |    |
-        +------------------+    |    +------------------+
-        |                       |                       |
-        v                       v                       v
-+-------+-------+       +-------+-------+       +-------+-------+
-|  PostgreSQL   |       |  Qdrant DB    |       |   Ollama LLM  |
-|  (Relational) |       |   (Vectors)   |       |  (Generative) |
-|  (Port 5432)  |       |  (Port 6333)  |       |  (Port 11434) |
-+---------------+       +---------------+       +---------------+
-```
+### Problem Statement
+In modern delivery organizations, staffing projects with optimal talent is a highly complex task. Resource managers must balance technical skill requirements, qualitative soft-skills, individual utilization rates, upcoming timeline ramp-downs, and cost structures. Traditional spreadsheet tracking leads to suboptimal allocations, uncoordinated capacity planning, and delayed project timelines.
+
+### Solution Overview
+The **AI Resource Management Platform** solves this by unifying data across HubSpot CRM pipelines, timesheets, and employee registries. Using a hybrid scoring recommendation model, semantic vector embeddings, and retrieval-augmented generation (RAG), the platform provides:
+1. **Intelligent Staffing Recommendations**: Ranks and matches active developers to project specifications using SQL and vector searches.
+2. **Project Health & Risk Diagnostics**: Flags project delivery delays, overallocation, and shadow resource billing leakages.
+3. **Capacity Forecasting & What-If Simulations**: Models future resource supply vs. demand over a rolling 6-month period, simulating deal wins and capacity deficits.
+4. **AI Conversational Copilot**: A RAG-driven chat assistant that reasons across all system engines to answer resource management questions.
 
 ---
 
-## Directory Structure
+## 2. Technology Stack
 
-The project code is organized as a modular Python package:
+- **Frontend**: Next.js 15 (React 19, TypeScript, Tailwind CSS v4, TanStack React Query, Framer Motion, Recharts)
+- **Backend API**: FastAPI (Python 3.11, SQLAlchemy, Uvicorn)
+- **Relational Database**: PostgreSQL 16
+- **Vector Database**: Qdrant Vector DB
+- **Local LLM**: Ollama (orchestrating `qwen2.5:7b` for text generation and `nomic-ai/nomic-embed-text-v1.5` for text profiles encoding)
+- **Containerization**: Docker & Docker Compose
+
+---
+
+## 3. Architecture & System Design
+
+The system runs as a collection of decoupled containers coordinated inside a private network bridge.
+
+```
+                    ┌────────────────────────────┐
+                    │      Client Browser        │
+                    │   (http://localhost:3000)  │
+                    └─────────────┬──────────────┘
+                                  │
+                                  ▼
+                    ┌────────────────────────────┐
+                    │   Next.js Frontend Container│
+                    └─────────────┬──────────────┘
+                                  │ (REST API / localhost:8000)
+                                  ▼
+                    ┌────────────────────────────┐
+                    │    FastAPI Backend Container│
+                    └──────┬──────┬──────┬───────┘
+                           │      │      │
+          ┌────────────────┘      │      └────────────────┐
+          ▼                       ▼                       ▼
+┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐
+│  PostgreSQL 16    │   │ Qdrant Vector DB  │   │   Ollama Local    │
+│  (Relational DB)  │   │  (Semantic DB)    │   │    (LLM Server)   │
+└───────────────────┘   └───────────────────┘   └───────────────────┘
+```
+
+### Relational Database Design
+SQL schemas under `backend/database/models.py` track core organizational entities:
+- **`employees`**: Employee data, location, role, department, and active utilization.
+- **`projects`**: Project status, dates, managers, and CoE affiliations.
+- **`allocations`**: Active allocation matrices tracking start/end dates and percentages.
+- **`skills`** & **`competencies`**: Detailed skill profiles and qualitative scores out of 5.
+- **`timesheets`**: Time tracking logs mapping hours and billable status.
+- **`weekly_status`**: Project status indicators (scope, schedule, quality).
+- **`pipeline`**: Active HubSpot sales deal pipelines.
+
+For detailed schema descriptions, see the [Database Design Guide](docs/database_design.md).
+
+### Vector Database Design
+Qdrant manages high-dimensional embeddings representing employee profiles, projects, and pipeline opportunities. Rich text representations are encoded into 768-dimensional vectors using `nomic-ai/nomic-embed-text-v1.5`.
+
+For vector profile layouts and retrieval flows, see the [Vector Database Guide](docs/vector_database.md).
+
+---
+
+## 4. Reorganized Repository Structure
+
+The project layout has been reorganized into a standardized enterprise structure:
+
 ```
 project/
-├── rawData/             # Read-Only raw source Excel & CSV files
-├── cleanedData/         # Cleaned, standardized CSV outputs from Phase 1
-│
-├── cleaning/            # Phase 1 Data Discovery, profiling, and ETL cleaning
-│   ├── reports/         # Visual charting reports (.png plots)
-│   ├── clean_data.py    # Main cleaning pipeline runner
-│   ├── validation.py    # Standardized validation asserts
-│   ├── config.py        # File path listings and constants
-│   └── utils.py         # Helper utilities
-│
-├── backend/             # Phase 2 Multi-service API and AI Orchestrator package
-│   ├── config/          # Application settings and environment parsing
-│   │   └── settings.py
-│   ├── database/        # SQLAlchemy database connection and models
-│   │   ├── session.py
-│   │   └── models.py
-│   ├── scripts/         # Data migration and ETL seeding scripts
-│   │   └── load_clean_data.py
-│   ├── embeddings/      # SentenceTransformer vector indexing pipeline
-│   │   └── generate_embeddings.py
-│   ├── llm/             # Generative AI provider abstractions (Ollama/Gemini/Groq)
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── ollama.py
-│   │   ├── gemini.py
-│   │   ├── groq.py
-│   │   └── factory.py
-│   ├── rag/             # Retrieval-Augmented Generation (RAG) orchestration
-│   │   ├── retriever.py
-│   │   ├── prompt_templates.py
-│   │   └── generator.py
-│   ├── tests/           # Integration tests suite (pytest)
-│   │   ├── test_api.py
-│   │   ├── test_db.py
-│   │   ├── test_embeddings.py
-│   │   ├── test_qdrant.py
-│   │   └── test_rag.py
-│   ├── docs/            # API Specifications
-│   │   └── API_SPEC.md
-│   ├── Dockerfile       # FastAPI container definition
-│   ├── requirements.txt # Python backend dependencies
-│   └── main.py          # FastAPI application server entrypoint
-│
-├── docker-compose.yml   # Multi-service infrastructure orchestration config
-└── notebooks/           # Jupyter notebooks for data profiling
+├── backend/                       # FastAPI backend codebase
+│   ├── config/                    # Environment parser and configurations
+│   ├── copilot/                   # Conversational LLM copilot engine
+│   ├── database/                  # PostgreSQL database session and models
+│   ├── embeddings/                # Embedding generation and Qdrant sync
+│   ├── forecast/                  # Rolling forecasting pipelines
+│   ├── health/                    # Project risk heuristics engines
+│   ├── llm/                       # Local/cloud LLM providers adapters
+│   ├── rag/                       # RAG retriever and generator templates
+│   ├── recommendation/            # Recommendation service and scoring models
+│   ├── scripts/                   # Seeding and startup scripts
+│   └── tests/                     # Backend pytest suites
+├── datasets/                      # Directory for data files (git-ignored)
+│   ├── raw/                       # Unstructured raw files
+│   └── cleaned/                   # Deduplicated, cleaned CSV tables
+├── docs/                          # Architecture, API, and setup guides
+├── frontend/                      # Next.js web application code
+│   └── src/                       # App pages, components, services, and hooks
+├── scripts/                       # Reusable tooling and pipeline scripts
+│   ├── cleaning/                  # Data profiling, cleaning, and validation scripts
+│   ├── notebooks/                 # Jupyter notebook documentation
+│   └── ops/                       # Operational start/stop/reset helper scripts
+├── docker-compose.yml             # Main Docker Compose configuration
 ```
+
+For more details on directory functions, see the [Repository Structure Guide](docs/repository_structure.md).
 
 ---
 
-## Step-by-Step Platform Setup Workflow
+## 5. Getting Started
 
-Follow these steps in chronological order to initialize and run the platform.
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+- Local memory of at least 16GB (recommended for running local Ollama model generation).
 
-### Step 1: Phase 1 Data Discovery & Cleaning (Local)
-Ingest raw unstructured/dirty Excel and CSV sheets from `rawData/`, standardize datatypes, resolve constraints, write duplicate reports, and output cleaned data files into `cleanedData/`.
+### Single-Command Quickstart
+To start the entire platform—including Next.js, FastAPI, PostgreSQL, Qdrant, and Ollama—run the startup script in your terminal:
 
-1. **Install local data science dependencies**:
+**Windows**:
+```powershell
+.\scripts\ops\start.bat
+```
+
+**Linux/macOS**:
+```bash
+chmod +x scripts/ops/start.sh scripts/ops/stop.sh scripts/ops/reset.sh
+./scripts/ops/start.sh
+```
+
+### What happens behind the scenes:
+1. The script checks if `.env` exists. If not, it copies `.env.example` to create a default `.env`.
+2. Docker Compose builds and starts all 5 containers in detached mode.
+3. The script polls the backend health check endpoint (`http://localhost:8000/api/health`) until it returns healthy.
+4. **Automatic Seeding & Syncing**: On startup, the containerized backend runs `backend/scripts/start_prod.py`.
+   - If PostgreSQL is empty, it seeds SQL tables with cleaned datasets from `datasets/cleaned/`.
+   - If Qdrant collections are empty or missing, it indexes the employee and project text profiles.
+   - If `qwen2.5:7b` is missing in Ollama, it pulls the model automatically.
+5. Once healthy, the console displays the application URLs:
+   - **Frontend UI**: `http://localhost:3000`
+   - **Backend API Swagger**: `http://localhost:8000/docs`
+   - **Qdrant DB Dashboard**: `http://localhost:6333/dashboard`
+
+---
+
+## 6. API Reference
+
+The FastAPI backend exposes endpoints for all platform features:
+- **`GET /api/health`**: System status verification.
+- **`POST /api/recommend/resources`**: Matches and ranks candidates for project roles.
+- **`POST /api/search/employees`**: Cosine-similarity profile search.
+- **`POST /api/copilot/chat`**: Conversational reasoning router.
+- **`GET /api/forecast/six-month`**: Rolling 6-month capacity demand metrics.
+
+For the complete API request and response specifications, see the [API Documentation](docs/api.md).
+
+---
+
+## 7. Operational Scripts
+
+- **`.\scripts\ops\stop.bat`** (or `./scripts/ops/stop.sh`): Stops all active Docker containers without losing stored database volumes.
+- **`.\scripts\ops\reset.bat`** (or `./scripts/ops/reset.sh`): Stops containers and deletes all database volumes. Run this to clear database data and trigger a fresh seed and embedding sync.
+
+---
+
+## 8. Verification and Tests
+
+To run the Python backend test suite locally:
+1. Activate your virtual environment and install requirements:
    ```bash
-   pip install pandas numpy openpyxl matplotlib seaborn jinja2
+   pip install -r backend/requirements.txt
    ```
-2. **Execute the cleaning pipeline**:
+2. Execute `pytest` targeting the tests directory:
    ```bash
-   python cleaning/clean_data.py
+   python -m pytest backend/tests/
    ```
-   This generates:
-   - Cleaned output files inside `cleanedData/` (e.g. `employees_clean.csv`, `projects_clean.csv`).
-   - Standardized profile quality charts, duplicate reports, and null maps inside `cleaning/reports/` and `cleaning/`.
 
 ---
 
-### Step 2: Docker Containers Launch
-Launch the platform services (FastAPI Backend, PostgreSQL, Qdrant, and Ollama) in detached background mode:
+## 9. Troubleshooting
 
-```bash
-docker compose up -d --build
-```
-Verify that all 4 containers are running:
-```bash
-docker ps
-```
+- **Ollama Model Download Failures**: If the model pull fails, verify your internet connection. Alternatively, you can run the pull command manually:
+  ```bash
+  docker exec -it resource-ollama ollama pull qwen2.5:7b
+  ```
+- **Connection Refused in Browser**: If you cannot access the frontend, make sure the `resource-frontend` container is running by typing `docker compose ps` and verify its logs using `docker compose logs frontend`.
 
 ---
 
-### Step 3: Database Seeding (PostgreSQL ETL Ingestion)
-Ingest the cleaned data from `cleanedData/` into PostgreSQL tables using the DB script inside the FastAPI container:
+## 10. Contributors and License
 
-```bash
-docker exec resource-backend python -m backend.scripts.load_clean_data
-```
-
----
-
-### Step 4: Generate Vector Embeddings (Qdrant Sync)
-Compile rich semantic AI Profiles for employees, projects, and pipeline requests, generate high-dimensional vectors, and synchronize them into Qdrant collections.
-
-*Note: This script runs with sequence limiting and chunk processing to keep memory footprint under 250MB (safe for standard CPUs).*
-```bash
-docker exec resource-backend python -m backend.embeddings.generate_embeddings
-```
-
----
-
-### Step 5: Pull LLM Weights in Ollama
-Trigger Ollama inside its container to fetch and cache the `qwen2.5:7b` instruct model:
-
-```bash
-docker exec resource-ollama ollama pull qwen2.5:7b
-```
-
----
-
-## Step 6: Testing & Query Verification
-
-### 1. Run Complete Test Suite
-Assert that database connections, vector indexes, local embedding generations, and API route states pass criteria:
-```bash
-docker exec resource-backend pytest
-```
-
-### 2. Verify System Health Check
-Query the health route to verify operational status of core systems:
-```bash
-curl http://localhost:8000/api/health
-```
-**Expected Response**:
-```json
-{
-  "relational_db": "healthy",
-  "vector_db": "healthy",
-  "llm_orchestrator": "healthy",
-  "status": "all_services_operational"
-}
-```
-
-### 3. Run Semantic Search Query
-Perform a vector similarity search for candidates (e.g. searching for a "data engineer"):
-```bash
-curl -X POST http://localhost:8000/api/search/employees \
-  -H "Content-Type: application/json" \
-  -d '{"query": "data engineer", "limit": 2}'
-```
-*(Returns matching employee profiles sorted by cosine similarity).*
-
-### 4. Execute RAG Query
-Explain a resource recommendation allocation:
-```bash
-curl -X POST http://localhost:8000/api/rag/query \
-  -H "Content-Type: application/json" \
-  -d '{"type": "explain", "employee_id": "EMP101", "project_id": "CLIENT_101_005"}'
-```
-*(Returns natural language explanation justifying staffing suitability).*
+- **Maintainer**: Open Source Maintainer & AI Devops Engineer
+- **License**: MIT License - see LICENSE file for details.

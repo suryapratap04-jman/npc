@@ -760,10 +760,10 @@ def generate_visualizations(datasets_raw: Dict[str, Any], datasets_clean: Dict[s
     plt.savefig(REPORTS_DIR / "allocation_distribution.png")
     plt.close()
     
-    logger.info("Saved all visualization graphs to cleaning/reports/.")
+    logger.info("Saved all visualization graphs to scripts/cleaning/reports/.")
 
 def export_clean_data(datasets_clean: Dict[str, pd.DataFrame]):
-    logger.info("Step 11: Exporting Clean Data to cleanedData/ directory...")
+    logger.info("Step 11: Exporting Clean Data to datasets/cleaned/ directory...")
     for key, df in datasets_clean.items():
         fname = CLEAN_FILES[key]
         out_path = CLEANED_DIR / fname
