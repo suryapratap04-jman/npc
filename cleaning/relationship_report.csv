@@ -1,0 +1,7 @@
+Relationship,Primary Table,Foreign Table,Status,Orphaned Count,Orphaned Key Sample,Description
+Employees -> Allocations,employees (employee_id),allocations (employee_id),Valid,0,[],Allocations made to non-existent employees in employees master.
+Projects -> Allocations,projects (project_id),allocations (project_id),Valid,0,[],Allocations made to non-existent project IDs in projects master.
+Employees -> Timesheets,employees (employee_id),timesheets (employee_id),Broken References,1,['0'],Timesheets submitted by employees missing in employees master.
+Projects -> Timesheets,projects (project_id),timesheets (project_id),Valid,0,[],Timesheets logged for project IDs missing in projects master.
+Projects -> Weekly Status Reports,projects (project_id),weekly_status (project_id_masked),Broken References,13,"['CLIENT_661-683', 'CLIENT_661-671', 'CLIENT_661-672', 'CLIENT_661-673', 'CLIENT_661-674']",Weekly status reports logged for projects missing in projects master (could be due to ID masking).
+Employees -> Skills,employees (employee_id),skills (employee_id),Valid,0,[],Skills listed for employee IDs missing in employees master.

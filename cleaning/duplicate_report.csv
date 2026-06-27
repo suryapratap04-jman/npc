@@ -1,0 +1,14 @@
+Dataset,Exact Duplicate Rows,ID Column Duplicates
+employees,0,{'employee_id': np.int64(0)}
+projects,0,{'project_id': np.int64(0)}
+allocations,0,"{'project_rolebased_user_id': np.int64(0), 'project_id': np.int64(29917), 'employee_id': np.int64(28766)}"
+timesheets,0,"{'timesheet_surrogate_key': np.int64(0), 'employee_id': np.int64(127889), 'timesheet_id': np.int64(0), 'project_id': np.int64(128144)}"
+skills,0,{'employee_id': np.int64(81925)}
+competencies_Solution Enabler,0,{'Employee ID': np.int64(0)}
+competencies_Solution Consultant,0,{'Employee ID': np.int64(0)}
+competencies_Senior Software Engineer,0,{'Employee ID': np.int64(0)}
+pipeline_Forecast,1,{}
+pipeline_Skillset,0,{}
+pipeline_Hierarchy,0,{}
+pipeline_6 Months Revenue,0,{}
+weekly_status,0,"{'wsr_key': np.int64(0), 'wsr_id': np.int64(0), 'project_id_masked': np.int64(69432)}"

@@ -1,0 +1,14 @@
+Dataset Name,Rows,Columns,Memory Usage,Duplicate Rows,Primary Key Candidate,Possible Foreign Keys
+employees,1042,9,0.350 MB,0,employee_id,employee_id -> employees.employee_id
+projects,2052,12,1.337 MB,0,project_key,"project_key -> projects.project_id, project_id -> projects.project_id, project_start_date -> projects.project_id, project_end_date -> projects.project_id, type_of_project -> projects.project_id, project_status -> projects.project_id"
+allocations,31969,9,12.191 MB,0,project_rolebased_user_id,project_rolebased_user_id -> projects.project_id
+timesheets,128526,17,97.351 MB,0,"timesheet_surrogate_key, timesheet_id",project_task_id -> projects.project_id
+skills,82211,8,36.707 MB,0,None,None
+competencies_Solution Enabler,56,13,0.026 MB,0,Employee ID,None
+competencies_Solution Consultant,37,9,0.013 MB,0,Employee ID,Good at estimating and drafting project plans. Define sprints and story points. Advocate and implement agile SQUAD model.  -> projects.project_id
+competencies_Senior Software Engineer,103,9,0.037 MB,0,Employee ID,None
+pipeline_Forecast,293,22,0.222 MB,1,None,None
+pipeline_Skillset,100,4,0.027 MB,0,Row #,None
+pipeline_Hierarchy,8,2,0.001 MB,0,US /  UK Hierarchy,None
+pipeline_6 Months Revenue,6,1,0.000 MB,0,Revenue:,None
+weekly_status,71205,12,52.982 MB,0,"wsr_key, wsr_id",project_id_masked -> projects.project_id

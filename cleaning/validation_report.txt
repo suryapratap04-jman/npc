@@ -1,0 +1,52 @@
+DATASET POST-CLEANING VALIDATION REPORT
+=======================================
+
+Checking if cleaned files exist...
+✔ employees_clean.csv exists.
+✔ projects_clean.csv exists.
+✔ allocations_clean.csv exists.
+✔ timesheets_clean.csv exists.
+✔ skills_clean.csv exists.
+✔ competencies_clean.csv exists.
+✔ pipeline_clean.csv exists.
+✔ weekly_status_clean.csv exists.
+
+Checking uniqueness and null count of Primary Keys...
+✔ PK employee_id in dataset employees is unique and has 0 nulls.
+✔ PK project_id in dataset projects is unique and has 0 nulls.
+✔ PK timesheet_surrogate_key in dataset timesheets is unique and has 0 nulls.
+✔ PK wsr_key in dataset weekly_status is unique and has 0 nulls.
+✔ PK employee_id in dataset competencies is unique and has 0 nulls.
+
+Checking Date format patterns (expecting YYYY-MM-DD)...
+✔ Dates in employees.date_of_join are standardized correctly.
+✔ Dates in employees.date_of_resignation are standardized correctly.
+✔ Dates in projects.project_start_date are standardized correctly.
+✔ Dates in projects.project_end_date are standardized correctly.
+✔ Dates in allocations.allocated_start_date are standardized correctly.
+✔ Dates in allocations.allocated_end_date are standardized correctly.
+✔ Dates in timesheets.date are standardized correctly.
+✔ Dates in timesheets.created_at are standardized correctly.
+✔ Dates in timesheets.updated_at are standardized correctly.
+✔ Dates in pipeline.request_received are standardized correctly.
+✔ Dates in pipeline.original_requested_start_date are standardized correctly.
+✔ Dates in pipeline.likely_start_date are standardized correctly.
+✔ Dates in weekly_status.week_start_date are standardized correctly.
+✔ Dates in weekly_status.week_end_date are standardized correctly.
+✔ Dates in weekly_status.created_at are standardized correctly.
+✔ Dates in weekly_status.updated_at are standardized correctly.
+
+Checking allocation percentages ranges (0 - 100)...
+✔ All allocation percentages are within valid [0, 100] range.
+
+Checking Referential Integrity...
+✔ allocations.employee_id referential check passed.
+✔ allocations.project_id referential check passed.
+✔ timesheets.employee_id referential check passed.
+✔ timesheets.project_id referential check passed.
+✔ skills.employee_id referential check passed.
+✔ competencies.employee_id referential check passed.
+
+========================================
+STATUS: VALIDATION SUCCESSFUL (All checks passed!)
+========================================
