@@ -1,0 +1,42 @@
+# Recommendation Engine Configuration
+
+# Weighted score contributions (must sum to 1.0)
+weights:
+  skill_match: 0.40
+  competency_match: 0.20
+  project_experience: 0.15
+  availability: 0.15
+  project_similarity: 0.10
+
+# Hard constraints & business rules thresholds
+thresholds:
+  utilization_threshold: 0.90   # Reject employees with allocation utilization >= 90%
+  similarity_threshold: 0.40    # Minimum similarity score required for related projects matching
+  require_mandatory_skills: true # Drop candidates missing mandatory requested skills
+
+# Parameters used to map features to 0-100 scales
+normalization:
+  max_experience_years: 15.0      # Experience above 15 years gets 100% normalization score
+  max_projects_completed: 10.0    # Completed 10+ matching projects gets 100% normalization score
+
+# Default settings
+defaults:
+  top_n: 10
+
+# Strategy Fusion Weights (must sum to 1.0)
+fusion_weights:
+  rule_based_v1: 0.40
+  semantic_only: 0.20
+  historical_only: 0.15
+  availability_only: 0.15
+  competency_only: 0.10
+
+# Candidate Diversity Capping
+diversity:
+  enable_diversity: true
+  max_per_department: 2
+  max_per_manager: 2
+
+# LLM Orchestration
+llm:
+  enable_explanations: false

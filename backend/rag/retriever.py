@@ -21,18 +21,18 @@ class VectorRetriever:
             query_vector = self.model.encode([query_text])[0].tolist()
             
             # Query Qdrant
-            results = self.client.search(
+            res = self.client.query_points(
                 collection_name=collection_name,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=limit
             )
             
             retrieved = []
-            for res in results:
+            for item in res.points:
                 retrieved.append({
-                    "id": res.id,
-                    "score": res.score,
-                    "payload": res.payload
+                    "id": item.id,
+                    "score": item.score,
+                    "payload": item.payload
                 })
             return retrieved
         except Exception as e:

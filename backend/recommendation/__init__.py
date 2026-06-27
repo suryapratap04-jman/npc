@@ -1,0 +1,3 @@
+from backend.recommendation.recommendation_service import RecommendationService
+from backend.recommendation.schemas import RecommendationRequest, RecommendationResponse, BenchmarkResponse
+from backend.recommendation.benchmark import RecommendationBenchmarker

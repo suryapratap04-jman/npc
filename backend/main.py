@@ -9,6 +9,7 @@ from backend.config.settings import settings
 from backend.database.session import get_db, engine
 from backend.database.models import Employee, Project, Skill, Pipeline
 from backend.embeddings.generate_embeddings import run_indexing
+from backend.recommendation import RecommendationService, RecommendationRequest, RecommendationResponse, BenchmarkResponse, RecommendationBenchmarker
 from backend.rag.retriever import VectorRetriever
 from backend.rag.generator import RAGGenerator
 
@@ -190,3 +191,32 @@ def query_rag_pipeline(req: RAGQueryRequest, generator: RAGGenerator = Depends(g
         
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported RAG query type '{req.type}'.")
+
+# --- RECOMMENDATION SERVICE ---
+
+@app.post("/api/recommend/resources", response_model=RecommendationResponse)
+def recommend_resources(req: RecommendationRequest, db: Session = Depends(get_db)):
+    """
+    Ranks active employees for allocation recommendations based on skills, competencies, and utilization, 
+    explaining choices via a generative LLM summary.
+    """
+    try:
+        service = RecommendationService(db)
+        return service.recommend_resources(req)
+    except Exception as e:
+        logger.error(f"Error executing recommendation matching: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/recommend/benchmark", response_model=BenchmarkResponse)
+def benchmark_recommendations(req: RecommendationRequest, db: Session = Depends(get_db)):
+    """
+    Runs all recommendation strategies on the same request and returns their ranked outputs and metrics comparison.
+    """
+    try:
+        benchmarker = RecommendationBenchmarker(db)
+        return benchmarker.run_benchmark(req)
+    except Exception as e:
+        logger.error(f"Error executing recommendation benchmarking: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+

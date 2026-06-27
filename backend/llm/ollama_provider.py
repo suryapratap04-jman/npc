@@ -10,7 +10,7 @@ class OllamaProvider(BaseLLMProvider):
     """Integrates local Ollama LLM provider services using REST APIs."""
     
     def __init__(self):
-        self.client = httpx.Client(timeout=60.0)
+        self.client = httpx.Client(timeout=180.0)
         self.base_url = f"http://{settings.OLLAMA_HOST}:{settings.OLLAMA_PORT}"
         
     def generate(self, prompt: str, system_prompt: Optional[str] = None, **kwargs) -> str:
