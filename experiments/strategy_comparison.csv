@@ -18,3 +18,11 @@ timestamp,project_id,strategy,weights,response_time_ms,relevant_count,precision_
 1782553431.7898133,CLIENT_101_005,semantic_only,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,184749.2,0,0.0,0.0,0.0,0.0,0.0
 1782553475.6496592,CLIENT_101_005,hybrid_v1,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,14367.6,0,0.0,0.0,0.0,0.0,59.0
 1782553505.5438626,CLIENT_101_005,semantic_only,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,151854.32,0,0.0,0.0,0.0,0.0,0.0
+1782553591.4095294,CLIENT_101_005,historical_only,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,159078.0,0,0.0,0.0,0.0,0.0,50.0
+1782553651.5372941,CLIENT_101_005,historical_only,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,145635.88,0,0.0,0.0,0.0,0.0,50.0
+1782553691.4576998,CLIENT_101_005,rule_based_v1,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,6973.97,0,0.0,0.0,0.0,0.0,71.25
+1782553699.2895722,CLIENT_101_005,semantic_only,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,7705.65,0,0.0,0.0,0.0,0.0,0.0
+1782553707.114191,CLIENT_101_005,historical_only,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,7616.4,0,0.0,0.0,0.0,0.0,50.0
+1782553714.2028844,CLIENT_101_005,availability_only,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,6968.52,0,0.0,0.0,0.0,0.0,100.0
+1782553721.0578423,CLIENT_101_005,competency_only,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,6726.68,0,0.0,0.0,0.0,0.0,80.0
+1782553728.3535414,CLIENT_101_005,hybrid_v1,rule_based_v1:0.4;semantic_only:0.2;historical_only:0.15;availability_only:0.15;competency_only:0.1,6939.24,0,0.0,0.0,0.0,0.0,59.0

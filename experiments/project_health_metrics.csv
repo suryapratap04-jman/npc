@@ -1,0 +1,2 @@
+timestamp,total_projects,risk_low_count,risk_med_count,risk_high_count,risk_crit_count,avg_utilization,avg_billability,potential_release_count,avg_risk_score,response_time_ms
+1782554099.958142,157,115,42,0,0,58.48,5.73,0,21.31,7457.87

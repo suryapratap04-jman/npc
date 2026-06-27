@@ -11,6 +11,7 @@ from backend.database.models import Employee, Project, Skill, Pipeline
 from backend.embeddings.generate_embeddings import run_indexing
 from backend.recommendation import RecommendationService, RecommendationRequest, RecommendationResponse, BenchmarkResponse, RecommendationBenchmarker
 from backend.rag.retriever import VectorRetriever
+from backend.health import ProjectHealthService, ProjectHealthSummary, ProjectHealthDetail, RampDownDetail, ProjectHealthAnalysisRequest
 from backend.rag.generator import RAGGenerator
 
 # Set up logging
@@ -218,5 +219,84 @@ def benchmark_recommendations(req: RecommendationRequest, db: Session = Depends(
     except Exception as e:
         logger.error(f"Error executing recommendation benchmarking: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- PROJECT HEALTH & CAPACITY INTELLIGENCE ---
+
+@app.get("/api/health/projects", response_model=List[ProjectHealthSummary])
+def get_projects_health(db: Session = Depends(get_db)):
+    """
+    Retrieves health status summaries for all active projects.
+    """
+    try:
+        service = ProjectHealthService(db)
+        return service.get_projects_health()
+    except Exception as e:
+        logger.error(f"Error fetching projects health: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/health/projects/{project_id}", response_model=ProjectHealthDetail)
+def get_project_health_detail(project_id: str, db: Session = Depends(get_db)):
+    """
+    Retrieves a detailed risk, utilization, and cost recovery audit for a single project.
+    """
+    try:
+        service = ProjectHealthService(db)
+        return service.get_project_health_detail(project_id)
+    except ValueError as val_err:
+        raise HTTPException(status_code=404, detail=str(val_err))
+    except Exception as e:
+        logger.error(f"Error fetching project detail health for {project_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/health/analyze", response_model=ProjectHealthDetail)
+def analyze_project_health(req: ProjectHealthAnalysisRequest, db: Session = Depends(get_db)):
+    """
+    Triggers diagnostic audit pipeline for a specific project.
+    """
+    try:
+        service = ProjectHealthService(db)
+        return service.get_project_health_detail(req.project_id)
+    except ValueError as val_err:
+        raise HTTPException(status_code=404, detail=str(val_err))
+    except Exception as e:
+        logger.error(f"Error running project health analysis: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/health/rampdown", response_model=List[RampDownDetail])
+def get_rampdown_candidates(db: Session = Depends(get_db)):
+    """
+    Lists active projects candidate for releasing allocations/resources.
+    """
+    try:
+        service = ProjectHealthService(db)
+        return service.get_rampdown_candidates()
+    except Exception as e:
+        logger.error(f"Error fetching rampdown projects: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/health/utilization")
+def get_utilization_stats(db: Session = Depends(get_db)):
+    """
+    Returns workload utilization and overallocation percentages per active project.
+    """
+    try:
+        service = ProjectHealthService(db)
+        return service.get_utilization_stats()
+    except Exception as e:
+        logger.error(f"Error fetching utilization stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/health/billability")
+def get_billability_stats(db: Session = Depends(get_db)):
+    """
+    Returns billing efficiency breakdown and shadow resource logs per active project.
+    """
+    try:
+        service = ProjectHealthService(db)
+        return service.get_billability_stats()
+    except Exception as e:
+        logger.error(f"Error fetching billability stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
