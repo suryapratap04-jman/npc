@@ -13,6 +13,10 @@ from backend.recommendation import RecommendationService, RecommendationRequest,
 from backend.rag.retriever import VectorRetriever
 from backend.health import ProjectHealthService, ProjectHealthSummary, ProjectHealthDetail, RampDownDetail, ProjectHealthAnalysisRequest
 from backend.rag.generator import RAGGenerator
+from backend.forecast import (
+    ForecastService, NewProjectDemandRequest, NewProjectForecastResponse,
+    SixMonthForecastResponse, CapacityStatusResponse, HiringResponse, RedeploymentResponse
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -296,6 +300,96 @@ def get_billability_stats(db: Session = Depends(get_db)):
         return service.get_billability_stats()
     except Exception as e:
         logger.error(f"Error fetching billability stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- DEMAND FORECAST & CAPACITY PLANNING INTELLIGENCE (USE CASE 2) ---
+
+@app.post("/api/forecast/new-project", response_model=NewProjectForecastResponse)
+def forecast_new_project(req: NewProjectDemandRequest, db: Session = Depends(get_db)):
+    """
+    Predicts team composition, duration, FTEs, costs, and hiring vs redeployment actions for a new project.
+    """
+    try:
+        service = ForecastService(db)
+        return service.forecast_new_project(req)
+    except Exception as e:
+        logger.error(f"Error forecasting new project: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/forecast/six-month", response_model=SixMonthForecastResponse)
+def get_six_month_forecast(db: Session = Depends(get_db)):
+    """
+    Computes a rolling 6-month operational forecast of volume, utilization, capacity, and role demand.
+    """
+    try:
+        service = ForecastService(db)
+        return service.get_six_month_forecast()
+    except Exception as e:
+        logger.error(f"Error compiling six-month forecast: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/forecast/capacity", response_model=CapacityStatusResponse)
+def get_capacity_status(db: Session = Depends(get_db)):
+    """
+    Returns the organization's resource capacity projections for 0, 30, 60, and 90 days.
+    """
+    try:
+        service = ForecastService(db)
+        return service.get_capacity_status()
+    except Exception as e:
+        logger.error(f"Error fetching capacity status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/forecast/hiring", response_model=HiringResponse)
+def get_hiring_needs(
+    project_type: str = Query(..., description="Project type (e.g. AI)"),
+    expected_duration_months: int = Query(6, description="Duration in months"),
+    required_skills: List[str] = Query(default=[], description="Required skills list"),
+    expected_start_date: str = Query("2026-08-15", description="Start date YYYY-MM-DD"),
+    expected_team_size: Optional[int] = Query(None, description="Optional team size limit"),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns prioritized external hiring requirements for a new project spec.
+    """
+    try:
+        req = NewProjectDemandRequest(
+            project_type=project_type,
+            expected_duration_months=expected_duration_months,
+            required_skills=required_skills,
+            expected_start_date=expected_start_date,
+            expected_team_size=expected_team_size
+        )
+        service = ForecastService(db)
+        return service.get_hiring_needs(req)
+    except Exception as e:
+        logger.error(f"Error compiling hiring needs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/forecast/redeployment", response_model=RedeploymentResponse)
+def get_redeployment_options(
+    project_type: str = Query(..., description="Project type (e.g. AI)"),
+    expected_duration_months: int = Query(6, description="Duration in months"),
+    required_skills: List[str] = Query(default=[], description="Required skills list"),
+    expected_start_date: str = Query("2026-08-15", description="Start date YYYY-MM-DD"),
+    expected_team_size: Optional[int] = Query(None, description="Optional team size limit"),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns available internal redeployment candidates for a new project spec.
+    """
+    try:
+        req = NewProjectDemandRequest(
+            project_type=project_type,
+            expected_duration_months=expected_duration_months,
+            required_skills=required_skills,
+            expected_start_date=expected_start_date,
+            expected_team_size=expected_team_size
+        )
+        service = ForecastService(db)
+        return service.get_redeployment_options(req)
+    except Exception as e:
+        logger.error(f"Error compiling redeployment options: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
