@@ -19,8 +19,8 @@ from backend.database.models import (
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("load_clean_data")
 
-# Determine cleanedData directory location relative to the project root
-CLEANED_DATA_DIR = Path(__file__).parent.parent.parent / "cleanedData"
+# Determine datasets/cleaned directory location relative to the project root
+CLEANED_DATA_DIR = Path(__file__).parent.parent.parent / "datasets" / "cleaned"
 
 def clean_df_for_db(df: pd.DataFrame, date_cols: list) -> pd.DataFrame:
     """Prepares DataFrame for db entry, parsing dates, converting NaN to None."""

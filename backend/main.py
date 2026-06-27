@@ -1,5 +1,6 @@
 import logging
 from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List, Optional, Dict, Any
@@ -17,6 +18,10 @@ from backend.forecast import (
     ForecastService, NewProjectDemandRequest, NewProjectForecastResponse,
     SixMonthForecastResponse, CapacityStatusResponse, HiringResponse, RedeploymentResponse
 )
+from backend.copilot import (
+    CopilotService, CopilotChatRequest, CopilotChatResponse,
+    CopilotExplainRequest, CopilotExplainResponse, ConversationHistoryResponse
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,6 +31,15 @@ app = FastAPI(
     title="AI Resource Management API Platform",
     description="Backend AI microservices supporting resource matching, forecasting, semantic search, and RAG.",
     version="1.0.0"
+)
+
+# Enable CORS for frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Initialize RAG components lazily
@@ -390,6 +404,56 @@ def get_redeployment_options(
         return service.get_redeployment_options(req)
     except Exception as e:
         logger.error(f"Error compiling redeployment options: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- AI RESOURCE MANAGEMENT COPILOT ---
+
+@app.post("/api/copilot/chat", response_model=CopilotChatResponse)
+def copilot_chat(req: CopilotChatRequest, db: Session = Depends(get_db)):
+    """
+    Conversational chat endpoint for resource managers to query recommendations, health, capacity, and forecasts.
+    """
+    try:
+        service = CopilotService(db)
+        return service.chat(req)
+    except Exception as e:
+        logger.error(f"Error in copilot chat: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/copilot/query", response_model=CopilotChatResponse)
+def copilot_query(req: CopilotChatRequest, db: Session = Depends(get_db)):
+    """
+    Single query endpoint (bypassing session loop context or treating it as a one-off run).
+    """
+    try:
+        service = CopilotService(db)
+        return service.chat(req)
+    except Exception as e:
+        logger.error(f"Error in copilot query: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/copilot/explain", response_model=CopilotExplainResponse)
+def copilot_explain(req: CopilotExplainRequest, db: Session = Depends(get_db)):
+    """
+    Direct endpoint explaining resource allocations using semantic and RAG models.
+    """
+    try:
+        service = CopilotService(db)
+        return service.explain(req)
+    except Exception as e:
+        logger.error(f"Error in copilot explain: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/copilot/history", response_model=ConversationHistoryResponse)
+def get_copilot_history(session_id: str = Query("default"), db: Session = Depends(get_db)):
+    """
+    Returns conversational session logs for a given session.
+    """
+    try:
+        service = CopilotService(db)
+        return service.get_history(session_id)
+    except Exception as e:
+        logger.error(f"Error fetching copilot history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
