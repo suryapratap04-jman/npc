@@ -60,12 +60,12 @@ export const recommendationService = {
     
     return filteredPipeline.map(p => ({
       id: String(p.id),
-      name: `${p.client || "Sigma"} - ${p.solution || "Software Engineering"} (Priority: ${p.priority || "Medium"})`,
-      client: p.client || "Client Account",
-      project_status: p.status || "Active",
-      project_manager: p.em || "Sarah Jenkins",
-      start_date: p.likely_start_date || "2026-08-01",
-      end_date: "2027-02-01",
+      name: `${p.client || "N/A"} - ${p.solution || "N/A"} (Priority: ${p.priority || "N/A"})`,
+      client: p.client || "N/A",
+      project_status: p.status || "N/A",
+      project_manager: p.em || "N/A",
+      start_date: p.likely_start_date || "N/A",
+      end_date: "N/A",
       skillset: p.skillset
     }))
   },

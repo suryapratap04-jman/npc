@@ -95,7 +95,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <div className="h-6 w-6 rounded bg-blue-600 flex items-center justify-center text-white font-extrabold text-xs shadow-sm">
                 A
               </div>
-              <span className="font-semibold text-foreground/90">Atlassian Analytics</span>
+              <span className="font-semibold text-foreground/90">Resource-Ops Analytics</span>
             </motion.div>
           )}
           {isSidebarCollapsed && (

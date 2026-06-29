@@ -1,31 +1,7 @@
 import { fetchAPI } from "./api"
 
-const REALISTIC_NAMES: Record<string, string> = {
-  "EMP1": "Alex Mercer",
-  "EMP2": "David Chen",
-  "EMP3": "Elena Petrova",
-  "EMP4": "Jordan Brooks",
-  "EMP5": "Samantha Cole",
-  "EMP102": "Alex Mercer",
-  "EMP108": "David Chen",
-  "EMP119": "Elena Petrova",
-  "EMP121": "Jordan Brooks",
-  "EMP130": "Samantha Cole"
-}
-
 export function getEmployeeName(id: string): string {
-  if (REALISTIC_NAMES[id]) return REALISTIC_NAMES[id]
-  const firstNames = ["Marcus", "Sarah", "Tom", "Elena", "Ravi", "Emma", "John", "Sophia", "Michael", "Olivia", "James", "Isabella"]
-  const lastNames = ["Aurelius", "Jenkins", "Harris", "Rostova", "Kumar", "Smith", "Doe", "Johnson", "Brown", "Davis", "Miller", "Wilson"]
-  
-  let hash = 0
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  hash = Math.abs(hash)
-  const first = firstNames[hash % firstNames.length]
-  const last = lastNames[(hash >> 2) % lastNames.length]
-  return `${first} ${last}`
+  return id
 }
 
 // TypeScript interfaces matching backend models
@@ -125,12 +101,13 @@ export interface ComposedDashboardData {
 export const dashboardService = {
   async getDashboardData(): Promise<ComposedDashboardData> {
     // Query FastAPI endpoints in parallel
-    const [projectsHealth, sixMonthForecast, rawEmployees, rawProjects, pipeline] = await Promise.all([
+    const [projectsHealth, sixMonthForecast, rawEmployees, rawProjects, pipeline, utilizationStats] = await Promise.all([
       fetchAPI<any[]>("/api/health/projects"),
       fetchAPI<any>("/api/forecast/six-month"),
       fetchAPI<any[]>("/api/employees?limit=100"),
       fetchAPI<any[]>("/api/projects?limit=50"),
-      fetchAPI<PipelineModel[]>("/api/pipeline?limit=20")
+      fetchAPI<PipelineModel[]>("/api/pipeline?limit=20"),
+      fetchAPI<any[]>("/api/health/utilization")
     ])
 
     // Map projects properly
@@ -139,7 +116,7 @@ export const dashboardService = {
       name: p.project_key || `Project ${p.project_id}`,
       client: p.client_id || "Client Account",
       project_status: p.project_status || "Active",
-      project_manager: p.reporter_id || "Sarah Jenkins",
+      project_manager: p.reporter_id || "N/A",
       start_date: p.project_start_date || "",
       end_date: p.project_end_date || ""
     }))
@@ -191,14 +168,17 @@ export const dashboardService = {
     // 6. Compose project health row structures
     const projectHealth = projectsHealth.map((p: any) => {
       const matchProj = projects.find(proj => proj.id === p.project_id)
+      const matchUtil = utilizationStats.find(u => u.project_id === p.project_id)
+      const allocatedEmployeesCount = employees.filter(e => e.current_project_id === p.project_id).length
+      
       return {
         id: p.project_id,
         name: matchProj ? matchProj.name : "Active Project",
         client: matchProj ? matchProj.client : "N/A",
         status: p.overall_health,
-        progress: p.overall_health === "Green" ? 90 : p.overall_health === "Amber" ? 75 : 45,
-        PM: matchProj ? matchProj.project_manager : "Sarah Jenkins",
-        staffCount: p.overall_health === "Red" ? 4 : 8,
+        progress: matchUtil ? Math.round(matchUtil.average_utilization) : 100,
+        PM: matchProj ? matchProj.project_manager : "N/A",
+        staffCount: allocatedEmployeesCount,
         riskDetail: p.overall_health === "Red" 
           ? "Critical staff gap detected" 
           : p.overall_health === "Amber" 
@@ -211,7 +191,7 @@ export const dashboardService = {
     const availabilityTimeline = benchedEmployees.slice(0, 5).map((e, idx) => ({
       id: e.employee_id,
       name: e.name,
-      skill: e.job_name || (e.skills[0] || "Backend Engineer"),
+      skill: e.job_name || (e.skills[0] || "N/A"),
       project: e.current_project_id || "Unallocated",
       date: "Available Now",
       daysRemaining: 0
@@ -225,7 +205,7 @@ export const dashboardService = {
       start: deal.expected_start_date,
       probability: `${Math.round(deal.probability * 100)}%`,
       size: `$${Math.round(deal.estimated_value / 1000)}K`,
-      roles: deal.notes?.split(",") || deal.roles_needed || ["Software Engineer"]
+      roles: deal.notes?.split(",") || deal.roles_needed || []
     }))
 
     // 9. Compose recent actions list

@@ -76,10 +76,10 @@ export const healthService = {
         ...s,
         name: matchProj ? (matchProj.project_key || `Project ${matchProj.project_id}`) : "Active Delivery Contract",
         client: matchProj ? (matchProj.client_id || "Client Account") : "N/A",
-        PM: matchProj ? (matchProj.reporter_id || "Sarah Jenkins") : "Sarah Jenkins",
-        staffCount: matchUtil ? (matchUtil.overallocated_count + 4) : (s.overall_health === "Red" ? 4 : 8),
-        billability: matchBill ? Math.round(matchBill.billability_percentage) : (s.overall_health === "Red" ? 60 : s.overall_health === "Amber" ? 75 : 95),
-        utilization: matchUtil ? Math.round(matchUtil.average_utilization) : (s.overall_health === "Red" ? 105 : s.overall_health === "Amber" ? 85 : 92)
+        PM: matchProj ? (matchProj.reporter_id || "N/A") : "N/A",
+        staffCount: matchUtil ? matchUtil.overallocated_count : 0,
+        billability: matchBill ? Math.round(matchBill.billability_percentage) : 0,
+        utilization: matchUtil ? Math.round(matchUtil.average_utilization) : 0
       }
     })
   },
@@ -95,7 +95,7 @@ export const healthService = {
       ...detail,
       name: matchProj ? (matchProj.project_key || `Project ${matchProj.project_id}`) : "Active Delivery Contract",
       client: matchProj ? (matchProj.client_id || "Client Account") : "N/A",
-      PM: matchProj ? (matchProj.reporter_id || "Sarah Jenkins") : "Sarah Jenkins"
+      PM: matchProj ? (matchProj.reporter_id || "N/A") : "N/A"
     }
   },
 

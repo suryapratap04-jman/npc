@@ -38,9 +38,6 @@ export const searchService = {
         fetchAPI<VectorSearchHit[]>("/api/search/employees", {
           method: "POST",
           body: JSON.stringify({ query, limit })
-        }).catch(err => {
-          console.error("Employee search failed:", err)
-          return []
         })
       )
     } else {
@@ -52,9 +49,6 @@ export const searchService = {
         fetchAPI<VectorSearchHit[]>("/api/search/projects", {
           method: "POST",
           body: JSON.stringify({ query, limit })
-        }).catch(err => {
-          console.error("Project search failed:", err)
-          return []
         })
       )
     } else {
@@ -65,8 +59,8 @@ export const searchService = {
     const [empHits, projHits, rawEmployees, rawProjects] = await Promise.all([
       promises[0],
       promises[1],
-      fetchAPI<any[]>("/api/employees?limit=100").catch(() => []),
-      fetchAPI<any[]>("/api/projects?limit=100").catch(() => [])
+      fetchAPI<any[]>("/api/employees?limit=100"),
+      fetchAPI<any[]>("/api/projects?limit=100")
     ])
 
     const mappedResults: SearchResultItem[] = []
@@ -80,15 +74,15 @@ export const searchService = {
       mappedResults.push({
         id: empId,
         name: getEmployeeName(empId),
-        title: p.job_name || empMatch?.job_name || "Engineer",
+        title: p.job_name || empMatch?.job_name || "N/A",
         type: "Employee",
-        subtitle: `${p.department_name || empMatch?.department_name || "Engineering"} CoE &bull; Location: ${p.location || empMatch?.location || "Remote"}`,
-        details: `Skills matched: ${(p.skills || empMatch?.skills || []).slice(0, 4).join(", ")}. Experience: ${empMatch?.experience_years || 4} years.`,
+        subtitle: `${p.department_name || empMatch?.department_name || "N/A"} CoE &bull; Location: ${p.location || empMatch?.location || "N/A"}`,
+        details: `Skills matched: ${(p.skills || empMatch?.skills || []).slice(0, 4).join(", ")}. Experience: ${empMatch?.experience_years || 0} years.`,
         similarity: hit.score,
         profile: {
-          department: p.department_name || empMatch?.department_name || "Engineering",
+          department: p.department_name || empMatch?.department_name || "N/A",
           currentProject: empMatch?.current_project_id ? (rawProjects.find(pr => pr.project_id === empMatch.current_project_id)?.project_key || empMatch.current_project_id) : "Bench / Unallocated",
-          experience: empMatch?.experience_years || 4,
+          experience: empMatch?.experience_years || 0,
           availability: empMatch?.allocation_percentage ? (100 - empMatch.allocation_percentage) : 100,
           skills: p.skills || empMatch?.skills || [],
           competencies: empMatch?.competencies || []
@@ -101,20 +95,21 @@ export const searchService = {
       const p = hit.payload || {}
       const projId = String(hit.id || p.id)
       const projMatch = rawProjects.find(pr => pr.project_id === projId)
+      const allocatedEmployeesCount = rawEmployees.filter(e => e.current_project_id === projId).length
       
       mappedResults.push({
         id: projId,
         name: p.name || projMatch?.project_key || `Project ${projId}`,
-        title: p.client || projMatch?.client_id || "Client Project",
+        title: p.client || projMatch?.client_id || "N/A",
         type: "Project",
-        subtitle: `Project Manager: ${p.project_manager || projMatch?.reporter_id || "Sarah Jenkins"} &bull; Client: ${p.client || projMatch?.client_id || "Delta"}`,
-        details: `Duration: ${p.start_date || projMatch?.project_start_date || "2026-08"} to ${p.end_date || projMatch?.project_end_date || "2027-02"}. Status: ${p.project_status || projMatch?.project_status || "Active"}.`,
+        subtitle: `Project Manager: ${p.project_manager || projMatch?.reporter_id || "N/A"} &bull; Client: ${p.client || projMatch?.client_id || "N/A"}`,
+        details: `Duration: ${p.start_date || projMatch?.project_start_date || "N/A"} to ${p.end_date || projMatch?.project_end_date || "N/A"}. Status: ${p.project_status || projMatch?.project_status || "N/A"}.`,
         similarity: hit.score,
         profile: {
-          progress: (p.project_status || projMatch?.project_status) === "Active" ? 75 : 100,
-          status: (p.project_status || projMatch?.project_status) === "Active" ? "Amber" : "Green",
-          staffCount: 6,
-          riskFactor: (p.project_status || projMatch?.project_status) === "Active" ? "Staff vacancy for critical role" : "On schedule"
+          progress: 100,
+          status: "Green",
+          staffCount: allocatedEmployeesCount,
+          riskFactor: "On schedule"
         }
       })
     })

@@ -1,4 +1,5 @@
 import { fetchAPI } from "./api"
+import { getEmployeeName } from "./dashboard.service"
 
 export interface CapacityProjections {
   available_now: number
@@ -169,11 +170,11 @@ export const forecastService = {
 
     const redeploymentStats = redeployment.redeployment_options.map((r, idx) => ({
       id: r.employee_id,
-      name: r.name || `Resource ${r.employee_id}`,
+      name: getEmployeeName(r.employee_id),
       role: r.role,
-      rollOffDate: r.project_end_date || "Jul 15, 2026",
-      sourceProject: r.current_project_id || "CLI-115",
-      targetProject: "CLI-201",
+      rollOffDate: r.project_end_date || "N/A",
+      sourceProject: r.current_project_id || "N/A",
+      targetProject: "New Project",
       status: "Match Score " + Math.round(r.match_score * 100) + "%"
     }))
 
