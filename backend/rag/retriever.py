@@ -17,9 +17,26 @@ class VectorRetriever:
         
     def _search_collection(self, collection_name: str, query_text: str, limit: int = 5) -> List[Dict[str, Any]]:
         try:
-            # Generate query vector
-            query_vector = self.model.encode([query_text])[0].tolist()
+            # 1. Embedding Cache Lookup
+            from backend.cache.cache_keys import make_embedding_key
+            from backend.cache.cache_service import cache_service, TTL_EMBEDDING, TTL_SEARCH
             
+            embedding_key = make_embedding_key(query_text)
+            query_vector = cache_service.get(embedding_key)
+            if query_vector is None:
+                query_vector = self.model.encode([query_text])[0].tolist()
+                cache_service.set(embedding_key, query_vector, TTL_EMBEDDING)
+                
+            # 2. Qdrant Query Cache Lookup
+            import hashlib
+            import json
+            vector_hash = hashlib.sha256(json.dumps(query_vector).encode("utf-8")).hexdigest()
+            search_cache_key = f"qdrant_search:{collection_name}:{vector_hash}:{limit}"
+            
+            cached_search = cache_service.get(search_cache_key)
+            if cached_search is not None:
+                return cached_search
+                
             # Query Qdrant
             res = self.client.query_points(
                 collection_name=collection_name,
@@ -34,6 +51,8 @@ class VectorRetriever:
                     "score": item.score,
                     "payload": item.payload
                 })
+                
+            cache_service.set(search_cache_key, retrieved, TTL_SEARCH)
             return retrieved
         except Exception as e:
             logger.error(f"Vector search failed on collection '{collection_name}': {e}")

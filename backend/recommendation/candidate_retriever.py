@@ -29,6 +29,13 @@ class CandidateRetriever:
 
     def get_project_vector(self, project_id: str) -> List[float]:
         """Retrieves the embedding vector for a project from Qdrant."""
+        from backend.cache.cache_service import cache_service, TTL_EMBEDDING
+        proj_vector_key = f"project_vector:{project_id}"
+        
+        cached_vector = cache_service.get(proj_vector_key)
+        if cached_vector is not None:
+            return cached_vector
+            
         try:
             point_id = generate_uuid_from_string(f"project:{project_id}")
             res = self.qdrant_client.retrieve(
@@ -37,13 +44,22 @@ class CandidateRetriever:
                 with_vectors=True
             )
             if res and res[0].vector:
-                return res[0].vector
+                vector = res[0].vector
+                cache_service.set(proj_vector_key, vector, TTL_EMBEDDING)
+                return vector
         except Exception as e:
             logger.warning(f"Could not retrieve project vector for {project_id} from Qdrant: {e}")
         return []
 
     def get_similar_projects(self, project_id: str, limit: int = 5) -> List[str]:
         """Finds IDs of similar projects based on vector distance in Qdrant."""
+        from backend.cache.cache_service import cache_service, TTL_SEARCH
+        similar_cache_key = f"qdrant_similar_projects:{project_id}:{limit}"
+        
+        cached_similar = cache_service.get(similar_cache_key)
+        if cached_similar is not None:
+            return cached_similar
+            
         proj_vector = self.get_project_vector(project_id)
         if not proj_vector:
             return []
@@ -58,7 +74,10 @@ class CandidateRetriever:
                 p_id = hit.payload.get("project_id")
                 if p_id and p_id != project_id:
                     similar_ids.append(p_id)
-            return similar_ids[:limit]
+            
+            result = similar_ids[:limit]
+            cache_service.set(similar_cache_key, result, TTL_SEARCH)
+            return result
         except Exception as e:
             logger.error(f"Error querying similar projects in Qdrant: {e}")
             return []
@@ -115,17 +134,34 @@ class CandidateRetriever:
         qdrant_scores: Dict[str, float] = {}
         try:
             query_text = f"Skills requested: {', '.join(required_skills)}"
-            query_vector = self.model.encode([query_text])[0].tolist()
+            from backend.cache.cache_keys import make_embedding_key
+            from backend.cache.cache_service import cache_service, TTL_EMBEDDING, TTL_SEARCH
             
-            res = self.qdrant_client.query_points(
-                collection_name="employees",
-                query=query_vector,
-                limit=top_n
-            )
-            for hit in res.points:
-                emp_id = hit.payload.get("employee_id")
-                if emp_id:
-                    qdrant_scores[emp_id] = float(hit.score)
+            embedding_key = make_embedding_key(query_text)
+            query_vector = cache_service.get(embedding_key)
+            if query_vector is None:
+                query_vector = self.model.encode([query_text])[0].tolist()
+                cache_service.set(embedding_key, query_vector, TTL_EMBEDDING)
+                
+            import hashlib
+            import json
+            vector_hash = hashlib.sha256(json.dumps(query_vector).encode("utf-8")).hexdigest()
+            search_cache_key = f"qdrant_search:employees:{vector_hash}:{top_n}"
+            
+            cached_res = cache_service.get(search_cache_key)
+            if cached_res is not None:
+                qdrant_scores = cached_res
+            else:
+                res = self.qdrant_client.query_points(
+                    collection_name="employees",
+                    query=query_vector,
+                    limit=top_n
+                )
+                for hit in res.points:
+                    emp_id = hit.payload.get("employee_id")
+                    if emp_id:
+                        qdrant_scores[emp_id] = float(hit.score)
+                cache_service.set(search_cache_key, qdrant_scores, TTL_SEARCH)
         except Exception as q_err:
             logger.warning(f"Could not perform semantic Qdrant employee query: {q_err}")
 

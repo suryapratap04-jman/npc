@@ -54,6 +54,23 @@ services:
       retries: 15
       start_period: 60s
 
+  # Caching layer for high-speed lookups
+  redis:
+    image: redis:7-alpine
+    container_name: resource-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - resource-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # FastAPI Backend API & Decision Engines
   backend:
     build:
@@ -75,6 +92,10 @@ services:
       - OLLAMA_PORT=11434
       - LLM_PROVIDER=ollama
       - OLLAMA_MODEL=qwen2.5:7b
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - CACHE_ENABLED=true
       - RUNNING_IN_DOCKER=true
     depends_on:
       db:
@@ -82,6 +103,8 @@ services:
       qdrant:
         condition: service_started
       ollama:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://127.0.0.1:8000/api/health || exit 1"]
@@ -111,6 +134,7 @@ volumes:
   postgres_data:
   qdrant_data:
   ollama_data:
+  redis_data:
 
 networks:
   resource-network:

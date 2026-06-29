@@ -94,75 +94,7 @@ export default function CopilotPage() {
     { label: "Analyze Q3 Capacity Forecast", query: "Draft a Q3 capacity forecast summary" }
   ]
 
-  // Prebaked replies mapping for rich visual streaming responses
-  const getPrebakedReply = (query: string): Partial<ChatMessage> => {
-    const cleanQuery = query.toLowerCase()
 
-    if (cleanQuery.includes("project") || cleanQuery.includes("risk") || cleanQuery.includes("health")) {
-      return {
-        text: "I scanned PostgreSQL and flagged **2 critical Red risks** and **1 Amber warnings**. Both Red status projects suffer from developers rolling off their contracts this week, creating immediate capacity gaps:",
-        confidence: 95,
-        reasoningSteps: [
-          "Initiating Health Engine diagnostic audit...",
-          "Scanning database client metrics & active contracts...",
-          "Checking Postgres logs for task latency deviations...",
-          "Compiling RAG status reports..."
-        ],
-        cardData: [
-          { id: "CLI-201", name: "E-Commerce Migration", client: "Delta Retail", status: "Red", PM: "Sarah Jenkins", gap: "Needs Lead React Architect", progress: 68 },
-          { id: "CLI-108", name: "Legacy Database Sync", client: "Apex Logistics", status: "Red", PM: "Tom Harris", gap: "Postgres Indexing Sync lag", progress: 42 }
-        ]
-      }
-    }
-
-    if (cleanQuery.includes("cli-201") || cleanQuery.includes("recommend") || cleanQuery.includes("replace") || cleanQuery.includes("match")) {
-      return {
-        text: "I scanned the Qdrant vector database and matched benched engineers against the **E-Commerce Migration (CLI-201)** vacancy (Lead React Architect). The match score ranks candidates by skills, availability timeline, and previous experience:",
-        confidence: 98,
-        reasoningSteps: [
-          "Scanning Qdrant database vector index for 'Lead React Architect'...",
-          "Querying Recommendation Engine (FTE availabilities & skills models)...",
-          "Scoring candidates across 5 matching dimensions...",
-          "Generating LLM staffing rationale justifications..."
-        ],
-        tableData: [
-          { id: "EMP102", name: "Alex Mercer", role: "Lead React Architect", score: 96, avail: "90% ready in 8 days", skills: "React, Next, TS" },
-          { id: "EMP108", name: "David Chen", role: "Senior Python DBA", score: 88, avail: "100% available", skills: "Python, Postgres, React" },
-          { id: "EMP119", name: "Elena Petrova", role: "Next.js Engineer", score: 81, avail: "70% available", skills: "React, Next, Tailwind" }
-        ]
-      }
-    }
-
-    if (cleanQuery.includes("forecast") || cleanQuery.includes("capacity") || cleanQuery.includes("summary") || cleanQuery.includes("q3")) {
-      return {
-        text: "Here is the projected workforce capacity and demand forecast for Q3 2026. The baseline calculations indicate a **6 FTE deficit** in engineering roles (specifically React Architects and Backend Engineers) starting in June due to pipeline contract wins:",
-        confidence: 96,
-        reasoningSteps: [
-          "Calling Capacity Forecast Engine...",
-          "Retrieving active allocations and HubSpot sales deal coefficients...",
-          "Aggregating monthly Supply vs. Demand curves...",
-          "Simulating resource gap timelines..."
-        ],
-        chartData: [
-          { month: "Jan", Capacity: 120, Demand: 98, Gap: 22 },
-          { month: "Feb", Capacity: 120, Demand: 104, Gap: 16 },
-          { month: "Mar", Capacity: 125, Demand: 110, Gap: 15 },
-          { month: "Apr", Capacity: 125, Demand: 112, Gap: 13 },
-          { month: "May", Capacity: 130, Demand: 118, Gap: 12 },
-          { month: "Jun", Capacity: 130, Demand: 124, Gap: 6 }
-        ]
-      }
-    }
-
-    return {
-      text: "I analyzed the platform logs. I am actively connected to the **Recommendation Engine**, **Forecast Engine**, and **Project Health Engine**. I can query employee records, run what-if capacity simulations, and audit project timelines.\n\nTry checking critical project health risks or matching candidates for project CLI-201.",
-      confidence: 90,
-      reasoningSteps: [
-        "Querying semantic database indexes...",
-        "Calling LLM provider fallback logic..."
-      ]
-    }
-  }
 
   const handleSend = (text: string) => {
     if (!text.trim()) return
@@ -218,17 +150,23 @@ export default function CopilotPage() {
           }
         } else if (intent === "health" || lowerText.includes("health") || lowerText.includes("risk") || lowerText.includes("critical")) {
           // Fetch live health project summaries
-          const health = await fetchAPI<any[]>("/api/health/projects").catch(() => null)
+          const [health, projects] = await Promise.all([
+            fetchAPI<any[]>("/api/health/projects").catch(() => []),
+            fetchAPI<any[]>("/api/projects?limit=100").catch(() => [])
+          ])
           if (health) {
-            cardData = health.filter(h => h.overall_health === "Red").map((h: any) => ({
-              id: h.project_id,
-              name: "Client Project",
-              client: "Client Account",
-              status: h.overall_health,
-              PM: "Sarah Jenkins",
-              gap: "Critical Staff Gap",
-              progress: 65
-            }))
+            cardData = health.filter(h => h.overall_health === "Red").map((h: any) => {
+              const matchProj = projects.find(p => p.project_id === h.project_id)
+              return {
+                id: h.project_id,
+                name: matchProj ? (matchProj.project_key || `Project ${matchProj.project_id}`) : "Active Project",
+                client: matchProj ? (matchProj.client_id || "Client Account") : "N/A",
+                status: h.overall_health,
+                PM: matchProj ? (matchProj.reporter_id || "N/A") : "N/A",
+                gap: "Critical Staff Gap",
+                progress: 100
+              }
+            })
           }
         }
 
@@ -343,7 +281,7 @@ export default function CopilotPage() {
         
         {/* Chat Feed */}
         <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-5">
-          {messages.map((msg) => {
+          {messages.map((msg, msgIdx) => {
             const isBot = msg.role === "assistant"
             return (
               <div 
@@ -370,7 +308,7 @@ export default function CopilotPage() {
                     <div className="whitespace-pre-wrap leading-relaxed">
                       {msg.text}
                       {/* Flashing cursor stream indicator */}
-                      {isGenerating && isBot && msg.text && msg.text.split(" ").length < (getPrebakedReply(inputValue).text?.split(" ").length || 1) && (
+                      {isGenerating && isBot && msg.text && msgIdx === messages.length - 1 && (
                         <span className="inline-block h-3.5 w-1 bg-blue-600 dark:bg-blue-400 ml-0.5 animate-pulse" />
                       )}
                     </div>

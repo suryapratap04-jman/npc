@@ -9,6 +9,7 @@ This document describes the high-level system architecture, components, and data
 ```mermaid
 graph TD
     frontend[Next.js Client SPA] <==>|HTTP Requests| backend[FastAPI Service Gateway]
+    backend <==>|Cache lookup| redis[(Redis Cache)]
     backend <==>|SQLAlchemy queries| db[(PostgreSQL Relational DB)]
     backend <==>|Vector operations| qdrant[(Qdrant Vector DB)]
     backend <==>|Prompt completions| ollama[(Ollama Local LLM Service)]
@@ -24,6 +25,7 @@ graph LR
     postgres -->|indexing scripts| qdrant[(Qdrant Vector DB)]
     qdrant -->|semantic match| backend[FastAPI Backend]
     postgres -->|relational joins| backend
+    backend <==>|check / set| redis[(Redis Cache)]
     backend -->|JSON payload| frontend[Next.js Client]
 ```
 
@@ -35,13 +37,16 @@ graph LR
 graph TD
     UI[Project Request Selected] --> Service[recommendationService]
     Service -->|POST /api/recommend/resources| FastAPI[FastAPI route]
-    FastAPI --> Retriever[CandidateRetriever]
+    FastAPI -->|check cache hit| RedisCache{Redis Cache Hit?}
+    RedisCache -->|Yes| Response[RecommendationResponse JSON]
+    RedisCache -->|No| Retriever[CandidateRetriever]
     Retriever -->|Postgres query| SQL[Fetch Active Employees & Allocations]
     Retriever -->|Qdrant query| Vector[Fetch Semantic Profile Matches]
     SQL --> Fuse[Hybrid Score Fusion Engine]
     Vector --> Fuse
     Fuse --> RAG[Explanation Engine via Ollama]
-    RAG --> Response[RecommendationResponse JSON]
+    RAG --> WriteCache[Store in Redis Cache]
+    WriteCache --> Response
     Response --> MappedUI[Card Layout Renders]
 ```
 
@@ -97,12 +102,14 @@ graph TD
     subgraph Custom Bridge: resource-network
         frontend[resource-frontend :3000]
         backend[resource-backend :8000]
+        redis[resource-redis :6379]
         db[resource-postgres :5432]
         qdrant[resource-qdrant :6333]
         ollama[resource-ollama :11434]
     end
     
     frontend --> backend
+    backend --> redis
     backend --> db
     backend --> qdrant
     backend --> ollama

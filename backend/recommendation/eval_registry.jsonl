@@ -187,3 +187,6 @@
 {"timestamp": 1782710153.2057922, "project_id": "4", "relevant_count": 0, "precision_at_5": 0.0, "precision_at_10": 0.0, "recall_at_10": 0.0, "mrr": 0.0, "average_recommendation_score": 63.89, "response_time_ms": 7825.72}
 {"timestamp": 1782710231.5719738, "project_id": "16", "relevant_count": 0, "precision_at_5": 0.0, "precision_at_10": 0.0, "recall_at_10": 0.0, "mrr": 0.0, "average_recommendation_score": 57.13, "response_time_ms": 6758.2}
 {"timestamp": 1782710245.8740482, "project_id": "40", "relevant_count": 0, "precision_at_5": 0.0, "precision_at_10": 0.0, "recall_at_10": 0.0, "mrr": 0.0, "average_recommendation_score": 64.23, "response_time_ms": 7000.55}
+{"timestamp": 1782711045.3703845, "project_id": "4", "relevant_count": 0, "precision_at_5": 0.0, "precision_at_10": 0.0, "recall_at_10": 0.0, "mrr": 0.0, "average_recommendation_score": 63.89, "response_time_ms": 7186.29}
+{"timestamp": 1782712737.5044115, "project_id": "PRJ101", "relevant_count": 0, "precision_at_5": 0.0, "precision_at_10": 0.0, "recall_at_10": 0.0, "mrr": 0.0, "average_recommendation_score": 59.33, "response_time_ms": 25285.2}
+{"timestamp": 1782713558.9836102, "project_id": "4", "relevant_count": 0, "precision_at_5": 0.0, "precision_at_10": 0.0, "recall_at_10": 0.0, "mrr": 0.0, "average_recommendation_score": 63.89, "response_time_ms": 35773.9}

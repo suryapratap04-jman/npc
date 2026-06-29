@@ -22,6 +22,20 @@ from backend.copilot import (
     CopilotService, CopilotChatRequest, CopilotChatResponse,
     CopilotExplainRequest, CopilotExplainResponse, ConversationHistoryResponse
 )
+from backend.cache import (
+    cache,
+    NS_RECOMMENDATION, TTL_RECOMMENDATION,
+    NS_DASHBOARD, TTL_DASHBOARD,
+    NS_FORECAST, TTL_FORECAST,
+    NS_HEALTH, TTL_HEALTH,
+    NS_SEARCH, TTL_SEARCH,
+    NS_EMPLOYEE, TTL_EMPLOYEE,
+    NS_PROJECT, TTL_PROJECT,
+    NS_COPILOT, TTL_COPILOT_SESSION
+)
+
+# Register database event listeners for cache invalidation
+import backend.database.events
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -70,15 +84,34 @@ class RAGQueryRequest(BaseModel):
     project_id: Optional[str] = None
     type: str = "general" # general, explain, summarize
 
+# --- STARTUP EVENT ---
+
+@app.on_event("startup")
+def startup_event():
+    logger.info("Initializing Redis namespaces and verification on startup...")
+    from backend.cache.redis_client import verify_redis_connection, get_redis_client
+    from backend.config.settings import settings
+    if settings.CACHE_ENABLED:
+        if verify_redis_connection():
+            client = get_redis_client()
+            if not client.exists("metrics:hits"):
+                client.set("metrics:hits", 0)
+            if not client.exists("metrics:misses"):
+                client.set("metrics:misses", 0)
+            logger.info("Redis cache successfully verified and namespaces initialized.")
+        else:
+            logger.warning("Redis cache enabled but connection check failed on startup.")
+
 # --- API ENDPOINTS ---
 
 @app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):
-    """Verifies relational database, vector database, and local LLM connectivity."""
+    """Verifies relational database, vector database, local LLM, and Redis cache connectivity."""
     status = {
         "relational_db": "healthy",
         "vector_db": "healthy",
         "llm_orchestrator": "healthy",
+        "redis_cache": "healthy",
         "status": "all_services_operational"
     }
     
@@ -94,7 +127,6 @@ def health_check(db: Session = Depends(get_db)):
     try:
         from qdrant_client import QdrantClient
         client = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
-        # Check running or collections list
         client.get_collections()
     except Exception as e:
         logger.error(f"Healthcheck failed on Qdrant: {e}")
@@ -105,14 +137,12 @@ def health_check(db: Session = Depends(get_db)):
     try:
         from backend.llm import get_llm_provider
         provider = get_llm_provider()
-        # Small verify
         if settings.LLM_PROVIDER == "ollama":
             import httpx
             r = httpx.get(f"http://{settings.OLLAMA_HOST}:{settings.OLLAMA_PORT}/")
             if r.status_code != 200:
                 raise Exception("Ollama endpoint returned non-200.")
         else:
-            # For cloud provider check if key is loaded
             if not provider.api_key:
                 raise Exception(f"{settings.LLM_PROVIDER} API Key is not set.")
     except Exception as e:
@@ -120,14 +150,56 @@ def health_check(db: Session = Depends(get_db)):
         status["llm_orchestrator"] = f"unhealthy: {e}"
         status["status"] = "degraded_state"
         
+    # 4. Test Redis Cache
+    if settings.CACHE_ENABLED:
+        try:
+            from backend.cache.redis_client import verify_redis_connection
+            if not verify_redis_connection():
+                raise Exception("Redis ping failed.")
+        except Exception as e:
+            logger.error(f"Healthcheck failed on Redis: {e}")
+            status["redis_cache"] = f"unhealthy: {e}"
+            status["status"] = "degraded_state"
+    else:
+        status["redis_cache"] = "disabled"
+        
     if status["status"] == "degraded_state":
         raise HTTPException(status_code=503, detail=status)
         
     return status
 
+# --- CACHE MONITORING ---
+
+@app.get("/api/cache/metrics")
+def get_cache_metrics():
+    """Fetches Redis cache usage metrics and ratios."""
+    from backend.cache.cache_service import cache_service
+    return cache_service.get_metrics()
+
+@app.post("/api/cache/clear")
+def clear_cache(namespace: Optional[str] = Query(None, description="Specific namespace to clear. Clears all if empty.")):
+    """Manually clears the cache namespaces."""
+    from backend.cache.cache_service import cache_service
+    if namespace:
+        count = cache_service.invalidate_namespace(namespace)
+        return {"status": "success", "message": f"Cleared {count} keys in namespace '{namespace}'."}
+    else:
+        # scan for all and flush
+        from backend.cache.redis_client import get_redis_client
+        try:
+            client = get_redis_client()
+            client.flushdb()
+            # reset metrics
+            client.set("metrics:hits", 0)
+            client.set("metrics:misses", 0)
+            return {"status": "success", "message": "Flushed all cache namespaces and reset metrics counters."}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
 # --- RELATIONAL RESOURCES ---
 
 @app.get("/api/employees")
+@cache(namespace=NS_EMPLOYEE, ttl_seconds=TTL_EMPLOYEE)
 def get_employees(db: Session = Depends(get_db), limit: int = 20, location: Optional[str] = None):
     query = db.query(Employee)
     if location:
@@ -191,6 +263,7 @@ def get_employees(db: Session = Depends(get_db), limit: int = 20, location: Opti
     return enriched
 
 @app.get("/api/projects")
+@cache(namespace=NS_PROJECT, ttl_seconds=TTL_PROJECT)
 def get_projects(db: Session = Depends(get_db), limit: int = 20, status: Optional[str] = None):
     query = db.query(Project)
     if status:
@@ -226,6 +299,7 @@ def trigger_embeddings_indexing():
 # --- SEMANTIC SEARCH ---
 
 @app.post("/api/search/employees")
+@cache(namespace=NS_SEARCH, ttl_seconds=TTL_SEARCH)
 def search_employees(req: SearchRequest, retriever: VectorRetriever = Depends(get_retriever)):
     """Performs vector semantic similarity search for employee profiles."""
     logger.info(f"API Semantic Search Employees: query='{req.query}'")
@@ -233,6 +307,7 @@ def search_employees(req: SearchRequest, retriever: VectorRetriever = Depends(ge
     return results
 
 @app.post("/api/search/projects")
+@cache(namespace=NS_SEARCH, ttl_seconds=TTL_SEARCH)
 def search_projects(req: SearchRequest, retriever: VectorRetriever = Depends(get_retriever)):
     """Performs vector semantic similarity search for projects."""
     logger.info(f"API Semantic Search Projects: query='{req.query}'")
@@ -270,6 +345,7 @@ def query_rag_pipeline(req: RAGQueryRequest, generator: RAGGenerator = Depends(g
 # --- RECOMMENDATION SERVICE ---
 
 @app.post("/api/recommend/resources", response_model=RecommendationResponse)
+@cache(namespace=NS_RECOMMENDATION, ttl_seconds=TTL_RECOMMENDATION)
 def recommend_resources(req: RecommendationRequest, db: Session = Depends(get_db)):
     """
     Ranks active employees for allocation recommendations based on skills, competencies, and utilization, 
@@ -297,6 +373,7 @@ def benchmark_recommendations(req: RecommendationRequest, db: Session = Depends(
 # --- PROJECT HEALTH & CAPACITY INTELLIGENCE ---
 
 @app.get("/api/health/projects", response_model=List[ProjectHealthSummary])
+@cache(namespace=NS_HEALTH, ttl_seconds=TTL_HEALTH)
 def get_projects_health(db: Session = Depends(get_db)):
     """
     Retrieves health status summaries for all active projects.
@@ -309,6 +386,7 @@ def get_projects_health(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health/projects/{project_id}", response_model=ProjectHealthDetail)
+@cache(namespace=NS_HEALTH, ttl_seconds=TTL_HEALTH)
 def get_project_health_detail(project_id: str, db: Session = Depends(get_db)):
     """
     Retrieves a detailed risk, utilization, and cost recovery audit for a single project.
@@ -337,6 +415,7 @@ def analyze_project_health(req: ProjectHealthAnalysisRequest, db: Session = Depe
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health/rampdown", response_model=List[RampDownDetail])
+@cache(namespace=NS_HEALTH, ttl_seconds=TTL_HEALTH)
 def get_rampdown_candidates(db: Session = Depends(get_db)):
     """
     Lists active projects candidate for releasing allocations/resources.
@@ -349,6 +428,7 @@ def get_rampdown_candidates(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health/utilization")
+@cache(namespace=NS_HEALTH, ttl_seconds=TTL_HEALTH)
 def get_utilization_stats(db: Session = Depends(get_db)):
     """
     Returns workload utilization and overallocation percentages per active project.
@@ -361,6 +441,7 @@ def get_utilization_stats(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health/billability")
+@cache(namespace=NS_HEALTH, ttl_seconds=TTL_HEALTH)
 def get_billability_stats(db: Session = Depends(get_db)):
     """
     Returns billing efficiency breakdown and shadow resource logs per active project.
@@ -375,6 +456,7 @@ def get_billability_stats(db: Session = Depends(get_db)):
 # --- DEMAND FORECAST & CAPACITY PLANNING INTELLIGENCE (USE CASE 2) ---
 
 @app.post("/api/forecast/new-project", response_model=NewProjectForecastResponse)
+@cache(namespace=NS_FORECAST, ttl_seconds=TTL_FORECAST)
 def forecast_new_project(req: NewProjectDemandRequest, db: Session = Depends(get_db)):
     """
     Predicts team composition, duration, FTEs, costs, and hiring vs redeployment actions for a new project.
@@ -387,6 +469,7 @@ def forecast_new_project(req: NewProjectDemandRequest, db: Session = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/forecast/six-month", response_model=SixMonthForecastResponse)
+@cache(namespace=NS_FORECAST, ttl_seconds=TTL_FORECAST)
 def get_six_month_forecast(db: Session = Depends(get_db)):
     """
     Computes a rolling 6-month operational forecast of volume, utilization, capacity, and role demand.
@@ -399,6 +482,7 @@ def get_six_month_forecast(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/forecast/capacity", response_model=CapacityStatusResponse)
+@cache(namespace=NS_FORECAST, ttl_seconds=TTL_FORECAST)
 def get_capacity_status(db: Session = Depends(get_db)):
     """
     Returns the organization's resource capacity projections for 0, 30, 60, and 90 days.
@@ -411,6 +495,7 @@ def get_capacity_status(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/forecast/hiring", response_model=HiringResponse)
+@cache(namespace=NS_FORECAST, ttl_seconds=TTL_FORECAST)
 def get_hiring_needs(
     project_type: str = Query(..., description="Project type (e.g. AI)"),
     expected_duration_months: int = Query(6, description="Duration in months"),
@@ -437,6 +522,7 @@ def get_hiring_needs(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/forecast/redeployment", response_model=RedeploymentResponse)
+@cache(namespace=NS_FORECAST, ttl_seconds=TTL_FORECAST)
 def get_redeployment_options(
     project_type: str = Query(..., description="Project type (e.g. AI)"),
     expected_duration_months: int = Query(6, description="Duration in months"),
@@ -489,6 +575,7 @@ def copilot_query(req: CopilotChatRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/copilot/explain", response_model=CopilotExplainResponse)
+@cache(namespace=NS_COPILOT, ttl_seconds=TTL_COPILOT_SESSION)
 def copilot_explain(req: CopilotExplainRequest, db: Session = Depends(get_db)):
     """
     Direct endpoint explaining resource allocations using semantic and RAG models.
@@ -501,6 +588,7 @@ def copilot_explain(req: CopilotExplainRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/copilot/history", response_model=ConversationHistoryResponse)
+@cache(namespace=NS_COPILOT, ttl_seconds=TTL_COPILOT_SESSION)
 def get_copilot_history(session_id: str = Query("default"), db: Session = Depends(get_db)):
     """
     Returns conversational session logs for a given session.

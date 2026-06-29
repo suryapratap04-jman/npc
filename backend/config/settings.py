@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     
     # Embedding Model Settings
     EMBEDDING_MODEL: str = Field(default="nomic-ai/nomic-embed-text-v1.5")
+    
+    # Redis Caching Settings
+    REDIS_HOST: str = Field(default="redis")
+    REDIS_PORT: int = Field(default=6379)
+    REDIS_PASSWORD: Optional[str] = Field(default=None)
+    REDIS_DB: int = Field(default=0)
+    CACHE_ENABLED: bool = Field(default=True)
 
     @property
     def computed_database_url(self) -> str:

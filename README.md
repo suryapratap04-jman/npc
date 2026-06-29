@@ -26,6 +26,7 @@ An integrated decision intelligence architecture combining:
 
 ## 5. Technology Stack
 - **Backend Core**: FastAPI (Python), SQLAlchemy (ORM).
+- **Caching Layer**: Redis (High-speed key-value cache with automatic database invalidation listeners).
 - **Frontend Core**: Next.js 15 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS, Shadcn UI, TanStack Query (v5), Framer Motion, Recharts.
 - **Databases**: PostgreSQL 16 (Relational), Qdrant (Vector DB).
 - **LLM/AI Orchestrator**: Local Ollama running `qwen2.5:7b` (or Groq/Gemini APIs).
@@ -34,6 +35,7 @@ An integrated decision intelligence architecture combining:
 ```mermaid
 graph TD
     frontend[Next.js Client SPA] <==>|HTTP Requests| backend[FastAPI Service Gateway]
+    backend <==>|Cache lookup| redis[(Redis Cache)]
     backend <==>|SQLAlchemy queries| db[(PostgreSQL Relational DB)]
     backend <==>|Vector operations| qdrant[(Qdrant Vector DB)]
     backend <==>|Prompt completions| ollama[(Ollama Local LLM Service)]
@@ -111,6 +113,10 @@ Follow instructions inside `docs/13_Developer_Guide.md` to set up virtual enviro
 ## 22. Environment Variables
 - `NEXT_PUBLIC_API_URL=http://localhost:8000` (browser API gateway URL).
 - `DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres` (internal Docker DB URL).
+- `REDIS_HOST=localhost` (set to `redis` when running in Docker).
+- `REDIS_PORT=6379` (default Redis port).
+- `CACHE_ENABLED=true` (controls whether Redis caching layer is enabled).
+
 
 ## 23. Running with Docker
 ```bash
