@@ -140,12 +140,3 @@ Validate API routes:
 
 ## 28. Troubleshooting
 Detailed remedies for database locks, LLM timeouts, and CORS errors are listed in `docs/14_Troubleshooting.md`.
-
-## 29. Future Improvements
-See `docs/15_Future_Roadmap.md` for roadmap enhancements.
-
-## 30. Contributors
-- Surya Pratap Singh (Principal Architect)
-
-## 31. License
-Proprietary Platform License. All rights reserved.
