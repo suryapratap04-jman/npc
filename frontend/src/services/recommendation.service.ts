@@ -1,4 +1,5 @@
 import { fetchAPI } from "./api"
+import { getEmployeeName } from "./dashboard.service"
 
 export interface RecommendationRequest {
   project_id?: string
@@ -48,19 +49,24 @@ export interface ProjectSummary {
   project_manager: string
   start_date: string
   end_date: string
+  skillset?: string
 }
 
 export const recommendationService = {
   async getProjects(): Promise<ProjectSummary[]> {
-    const rawProjects = await fetchAPI<any[]>("/api/projects?limit=50")
-    return rawProjects.map(p => ({
-      id: p.project_id,
-      name: p.project_key || `Project ${p.project_id}`,
-      client: p.client_id || "Client Account",
-      project_status: p.project_status || "Active",
-      project_manager: p.reporter_id || "Sarah Jenkins",
-      start_date: p.project_start_date || "2026-08-01",
-      end_date: p.project_end_date || "2027-02-01"
+    const rawPipeline = await fetchAPI<any[]>("/api/pipeline?limit=100")
+    // Filter to only include pipeline deals that have a non-empty skillset
+    const filteredPipeline = rawPipeline.filter(p => p.skillset && p.skillset.trim().length > 0)
+    
+    return filteredPipeline.map(p => ({
+      id: String(p.id),
+      name: `${p.client || "Sigma"} - ${p.solution || "Software Engineering"} (Priority: ${p.priority || "Medium"})`,
+      client: p.client || "Client Account",
+      project_status: p.status || "Active",
+      project_manager: p.em || "Sarah Jenkins",
+      start_date: p.likely_start_date || "2026-08-01",
+      end_date: "2027-02-01",
+      skillset: p.skillset
     }))
   },
 
@@ -79,11 +85,11 @@ export const recommendationService = {
       const empMatch = employees.find(e => e.employee_id === candidate.employee_id)
       return {
         ...candidate,
-        name: empMatch ? empMatch.name : `Resource ${candidate.employee_id}`,
-        skills: empMatch ? empMatch.skills : candidate.matching_skills,
-        competencies: empMatch ? empMatch.competencies : [],
-        experience_years: empMatch ? empMatch.experience_years : 4,
-        email: empMatch ? empMatch.email : `${candidate.employee_id}@company.com`
+        name: getEmployeeName(candidate.employee_id),
+        skills: empMatch && empMatch.skills && empMatch.skills.length > 0 ? empMatch.skills : candidate.matching_skills,
+        competencies: empMatch && empMatch.competencies ? empMatch.competencies : [],
+        experience_years: empMatch && empMatch.experience_years ? empMatch.experience_years : 4,
+        email: empMatch && empMatch.email ? empMatch.email : `${candidate.employee_id}@company.com`
       }
     })
 

@@ -1,5 +1,5 @@
 import { fetchAPI } from "./api"
-import { EmployeeModel, ProjectModel, PipelineModel } from "./dashboard.service"
+import { getEmployeeName } from "./dashboard.service"
 
 export interface ReportColumn {
   header: string
@@ -17,7 +17,7 @@ export interface ReportPreviewData {
   rows: any[]
 }
 
-export const reportsService = {
+export const reportService = {
   async getReportPreviewData(category: string): Promise<ReportPreviewData> {
     let columns: ReportColumn[] = []
     let rows: any[] = []
@@ -33,10 +33,18 @@ export const reportsService = {
         { header: "RAG Status", accessor: "status" }
       ]
       // Fetch live project status summaries
-      const [projects, healthSummaries] = await Promise.all([
-        fetchAPI<ProjectModel[]>("/api/projects?limit=50"),
+      const [rawProjects, healthSummaries] = await Promise.all([
+        fetchAPI<any[]>("/api/projects?limit=50"),
         fetchAPI<any[]>("/api/health/projects")
       ])
+      const projects = rawProjects.map(p => ({
+        id: p.project_id,
+        name: p.project_key || `Project ${p.project_id}`,
+        client: p.client_id || "Client Account",
+        project_manager: p.reporter_id || "Sarah Jenkins",
+        project_status: p.project_status || "Active"
+      }))
+
       rows = healthSummaries.map((h: any) => {
         const match = projects.find(p => p.id === h.project_id)
         return {
@@ -77,10 +85,10 @@ export const reportsService = {
         { header: "Free Capacity (%)", accessor: "availability" }
       ]
       // Fetch employees list
-      const employees = await fetchAPI<EmployeeModel[]>("/api/employees?limit=50")
-      rows = employees.map(e => ({
+      const rawEmployees = await fetchAPI<any[]>("/api/employees?limit=50")
+      rows = rawEmployees.map(e => ({
         id: e.employee_id,
-        name: e.name,
+        name: getEmployeeName(e.employee_id),
         role: e.job_name || "Engineer",
         department: e.department_name || "Engineering",
         availability: e.allocation_percentage ? (100 - e.allocation_percentage) : 100
@@ -97,13 +105,13 @@ export const reportsService = {
         { header: "Probability (%)", accessor: "probability" }
       ]
       // Fetch CRM pipelines deals
-      const deals = await fetchAPI<PipelineModel[]>("/api/pipeline?limit=50")
+      const deals = await fetchAPI<any[]>("/api/pipeline?limit=50")
       rows = deals.map(d => ({
-        id: d.deal_id,
+        id: d.deal_id || d.id,
         client: d.client,
         project: d.project_name,
-        size: `$${(d.estimated_value / 1000).toFixed(0)}K`,
-        probability: `${Math.round(d.probability * 100)}%`
+        size: d.estimated_value ? `$${Math.round(d.estimated_value / 1000)}K` : `$0K`,
+        probability: d.probability ? `${Math.round(d.probability * 100)}%` : `0%`
       }))
       rowCount = rows.length
       size = `${(rowCount * 1.1).toFixed(1)} KB`

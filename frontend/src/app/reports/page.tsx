@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToastStore } from "@/store/useToastStore"
-import { reportsService } from "@/services/reports.service"
+import { reportService } from "@/services/report.service"
 import Loading from "@/app/loading"
 
 interface ReportColumn {
@@ -56,7 +56,7 @@ export default function ReportsPage() {
   // Query report preview data
   const { data: preview, isLoading: loading, error, refetch } = useQuery<ReportPreview>({
     queryKey: ["reportPreview", category],
-    queryFn: () => reportsService.getReportPreviewData(category)
+    queryFn: () => reportService.getReportPreviewData(category)
   })
 
   const handleGeneratePreview = () => {

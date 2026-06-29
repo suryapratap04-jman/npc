@@ -1,196 +1,151 @@
-# AI Resource Management API Platform
+# AI Resource Management Decision Intelligence Platform
 
-An enterprise-grade, decision-intelligence platform that integrates relational storage, semantic vector search, and local LLM orchestration to automate candidate staffing recommendations, analyze delivery risks, and simulate operational capacity.
+This platform optimizes human resource allocations, project assignments, and capacity forecasts across a technical services organization.
 
 ---
 
 ## 1. Project Overview
+The AI Resource Management Platform is a decision intelligence client-server application. It processes organizational timesheets, skillsets, competencies, and sales pipeline deals to make resource planning and project assignments fully backend-driven.
 
-### Problem Statement
-In modern delivery organizations, staffing projects with optimal talent is a highly complex task. Resource managers must balance technical skill requirements, qualitative soft-skills, individual utilization rates, upcoming timeline ramp-downs, and cost structures. Traditional spreadsheet tracking leads to suboptimal allocations, uncoordinated capacity planning, and delayed project timelines.
+## 2. Business Problem
+- **High Bench Overhead**: Inability to rotate resources off project assignments quickly when timelines complete.
+- **Suboptimal Resourcing**: Matching candidates manually without robust verification of skills, competencies, or availability.
+- **Capacity Forecasting Blindness**: Hard to predict team supply/demand ratios over a six-month window.
 
-### Solution Overview
-The **AI Resource Management Platform** solves this by unifying data across HubSpot CRM pipelines, timesheets, and employee registries. Using a hybrid scoring recommendation model, semantic vector embeddings, and retrieval-augmented generation (RAG), the platform provides:
-1. **Intelligent Staffing Recommendations**: Ranks and matches active developers to project specifications using SQL and vector searches.
-2. **Project Health & Risk Diagnostics**: Flags project delivery delays, overallocation, and shadow resource billing leakages.
-3. **Capacity Forecasting & What-If Simulations**: Models future resource supply vs. demand over a rolling 6-month period, simulating deal wins and capacity deficits.
-4. **AI Conversational Copilot**: A RAG-driven chat assistant that reasons across all system engines to answer resource management questions.
+## 3. Proposed Solution
+An integrated decision intelligence architecture combining:
+- A hybrid candidate matching search (PostgreSQL filtering + Qdrant similarity search).
+- An active project health monitor assessing delivery status risks.
+- A rolling capacity planning scenario simulator.
 
----
+## 4. Key Features
+- **Semantic Resource Spotlight**: Search engine querying employee vector profiles.
+- **Fit Explanations**: Generative RAG reports explaining why a resource fits a project.
+- **Embeddings Sync Triggers**: Vector indexing reload directly from the dashboard.
+- **What-If Forecast Scenarios**: Simulate sales pipeline impacts.
 
-## 2. Technology Stack
+## 5. Technology Stack
+- **Backend Core**: FastAPI (Python), SQLAlchemy (ORM).
+- **Frontend Core**: Next.js 15 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS, Shadcn UI, TanStack Query (v5), Framer Motion, Recharts.
+- **Databases**: PostgreSQL 16 (Relational), Qdrant (Vector DB).
+- **LLM/AI Orchestrator**: Local Ollama running `qwen2.5:7b` (or Groq/Gemini APIs).
 
-- **Frontend**: Next.js 15 (React 19, TypeScript, Tailwind CSS v4, TanStack React Query, Framer Motion, Recharts)
-- **Backend API**: FastAPI (Python 3.11, SQLAlchemy, Uvicorn)
-- **Relational Database**: PostgreSQL 16
-- **Vector Database**: Qdrant Vector DB
-- **Local LLM**: Ollama (orchestrating `qwen2.5:7b` for text generation and `nomic-ai/nomic-embed-text-v1.5` for text profiles encoding)
-- **Containerization**: Docker & Docker Compose
-
----
-
-## 3. Architecture & System Design
-
-The system runs as a collection of decoupled containers coordinated inside a private network bridge.
-
-```
-                    ┌────────────────────────────┐
-                    │      Client Browser        │
-                    │   (http://localhost:3000)  │
-                    └─────────────┬──────────────┘
-                                  │
-                                  ▼
-                    ┌────────────────────────────┐
-                    │   Next.js Frontend Container│
-                    └─────────────┬──────────────┘
-                                  │ (REST API / localhost:8000)
-                                  ▼
-                    ┌────────────────────────────┐
-                    │    FastAPI Backend Container│
-                    └──────┬──────┬──────┬───────┘
-                           │      │      │
-          ┌────────────────┘      │      └────────────────┐
-          ▼                       ▼                       ▼
-┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐
-│  PostgreSQL 16    │   │ Qdrant Vector DB  │   │   Ollama Local    │
-│  (Relational DB)  │   │  (Semantic DB)    │   │    (LLM Server)   │
-└───────────────────┘   └───────────────────┘   └───────────────────┘
+## 6. High-Level Architecture
+```mermaid
+graph TD
+    frontend[Next.js Client SPA] <==>|HTTP Requests| backend[FastAPI Service Gateway]
+    backend <==>|SQLAlchemy queries| db[(PostgreSQL Relational DB)]
+    backend <==>|Vector operations| qdrant[(Qdrant Vector DB)]
+    backend <==>|Prompt completions| ollama[(Ollama Local LLM Service)]
 ```
 
-### Relational Database Design
-SQL schemas under `backend/database/models.py` track core organizational entities:
-- **`employees`**: Employee data, location, role, department, and active utilization.
-- **`projects`**: Project status, dates, managers, and CoE affiliations.
-- **`allocations`**: Active allocation matrices tracking start/end dates and percentages.
-- **`skills`** & **`competencies`**: Detailed skill profiles and qualitative scores out of 5.
-- **`timesheets`**: Time tracking logs mapping hours and billable status.
-- **`weekly_status`**: Project status indicators (scope, schedule, quality).
-- **`pipeline`**: Active HubSpot sales deal pipelines.
+## 7. Repository Structure
+See `docs/12_Repository_Structure.md` for a comprehensive breakdown of all modules.
 
-For detailed schema descriptions, see the [Database Design Guide](docs/database_design.md).
+## 8. Dataset Description
+Dataset CSV tables are loaded from `datasets/raw/` containing:
+- `employees.csv`: HR payroll rosters.
+- `skills.csv`: Catalog of skill details and experience metrics.
+- `competencies.csv`: Professional consulting scorecards.
+- `projects.csv`: Project metadata and active statuses.
+- `allocations.csv`: Assignment histories.
+- `pipeline.csv`: Anticipated CRM pipeline deals.
 
-### Vector Database Design
-Qdrant manages high-dimensional embeddings representing employee profiles, projects, and pipeline opportunities. Rich text representations are encoded into 768-dimensional vectors using `nomic-ai/nomic-embed-text-v1.5`.
+## 9. Data Cleaning Pipeline
+Managed via `scripts/cleaning/clean_data.py`:
+- Parses and standardizes date values.
+- Filters duplicates and resolves null keys.
+- Outputs clean files to `datasets/processed/` and seeds PostgreSQL.
 
-For vector profile layouts and retrieval flows, see the [Vector Database Guide](docs/vector_database.md).
+## 10. Database Architecture
+Relational tables schema implemented in `backend/database/models.py`:
+- `employees`: Core details (employee_id, location, job, department).
+- `projects`: Key timelines, status, and project managers.
+- `allocations`: Assigns employee IDs to project IDs with allocation ratios.
+- `skills`: Skills catalog.
+- `competencies`: Hires consultancy scores.
 
----
+## 11. Vector Database
+Qdrant is populated using the `generate_embeddings.py` script:
+- Collections: `employees`, `projects`, `pipeline`.
+- Model: `SentenceTransformer("all-MiniLM-L6-v2")` (384-dimensions, COSINE).
 
-## 4. Reorganized Repository Structure
+## 12. Recommendation Architecture
+- **Retriever**: Queries Postgres for active staff and Qdrant for semantic compatibility scores.
+- **Scoring**: Blends Skills (40%), Competencies (30%), Availability (20%), and Historical Similarity (10%).
+- **Explanation**: Context is passed to Ollama to generate professional fit reports.
 
-The project layout has been reorganized into a standardized enterprise structure:
+## 13. Project Health Engine
+- **Schedule**: Flags red alerts if delay days > 14 days.
+- **Utilization**: Identifies overallocated (>100%) or benched (<70%) resources.
+- **Billability**: Compares billable hours to shadow costs.
 
-```
-project/
-├── backend/                       # FastAPI backend codebase
-│   ├── config/                    # Environment parser and configurations
-│   ├── copilot/                   # Conversational LLM copilot engine
-│   ├── database/                  # PostgreSQL database session and models
-│   ├── embeddings/                # Embedding generation and Qdrant sync
-│   ├── forecast/                  # Rolling forecasting pipelines
-│   ├── health/                    # Project risk heuristics engines
-│   ├── llm/                       # Local/cloud LLM providers adapters
-│   ├── rag/                       # RAG retriever and generator templates
-│   ├── recommendation/            # Recommendation service and scoring models
-│   ├── scripts/                   # Seeding and startup scripts
-│   └── tests/                     # Backend pytest suites
-├── datasets/                      # Directory for data files (git-ignored)
-│   ├── raw/                       # Unstructured raw files
-│   └── cleaned/                   # Deduplicated, cleaned CSV tables
-├── docs/                          # Architecture, API, and setup guides
-├── frontend/                      # Next.js web application code
-│   └── src/                       # App pages, components, services, and hooks
-├── scripts/                       # Reusable tooling and pipeline scripts
-│   ├── cleaning/                  # Data profiling, cleaning, and validation scripts
-│   ├── notebooks/                 # Jupyter notebook documentation
-│   └── ops/                       # Operational start/stop/reset helper scripts
-├── docker-compose.yml             # Main Docker Compose configuration
-```
+## 14. Forecast Engine
+- Combines Postgres active allocations with CRM pipeline deals to estimate future supply/demand gaps over a six-month rolling projection.
 
-For more details on directory functions, see the [Repository Structure Guide](docs/repository_structure.md).
+## 15. AI Copilot
+- Intent Classifier handles requests for Recommendations, Health summaries, or Forecasts, enriching prompts with database contexts and returning conversational answers.
 
----
+## 16. RAG Pipeline
+- Retrieves vector contexts from Qdrant, merges them with PostgreSQL relational metadata, and formats prompts for local LLM generation.
 
-## 5. Getting Started
+## 17. API Architecture
+Exposes FastAPI routes under `/api/*` for health status checks, searches, recommendations, and forecasts. Detailed specs in `docs/10_API_Documentation.md`.
 
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
-- Local memory of at least 16GB (recommended for running local Ollama model generation).
+## 18. Frontend Architecture
+- Client Components (`"use client"`) using React Query hooks for client caching and state binding.
+- Recharts maps charts; Framer Motion manages dialog drawers.
 
-### Single-Command Quickstart
-To start the entire platform—including Next.js, FastAPI, PostgreSQL, Qdrant, and Ollama—run the startup script in your terminal:
+## 19. Docker Architecture
+Bridge networking (`resource-network`) links `resource-postgres`, `resource-qdrant`, `resource-ollama`, `resource-backend`, and `resource-frontend`.
 
-**Windows**:
-```powershell
-.\scripts\ops\start.bat
-```
+## 20. Folder Structure
+Organized under:
+- `backend/`: Router and engines.
+- `frontend/`: App pages and services client.
+- `docs/`: Numbered documentation files.
 
-**Linux/macOS**:
+## 21. Installation
+Follow instructions inside `docs/13_Developer_Guide.md` to set up virtual environments and Node modules.
+
+## 22. Environment Variables
+- `NEXT_PUBLIC_API_URL=http://localhost:8000` (browser API gateway URL).
+- `DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres` (internal Docker DB URL).
+
+## 23. Running with Docker
 ```bash
-chmod +x scripts/ops/start.sh scripts/ops/stop.sh scripts/ops/reset.sh
-./scripts/ops/start.sh
+docker-compose up --build -d
 ```
 
-### What happens behind the scenes:
-1. The script checks if `.env` exists. If not, it copies `.env.example` to create a default `.env`.
-2. Docker Compose builds and starts all 5 containers in detached mode.
-3. The script polls the backend health check endpoint (`http://localhost:8000/api/health`) until it returns healthy.
-4. **Automatic Seeding & Syncing**: On startup, the containerized backend runs `backend/scripts/start_prod.py`.
-   - If PostgreSQL is empty, it seeds SQL tables with cleaned datasets from `datasets/cleaned/`.
-   - If Qdrant collections are empty or missing, it indexes the employee and project text profiles.
-   - If `qwen2.5:7b` is missing in Ollama, it pulls the model automatically.
-5. Once healthy, the console displays the application URLs:
-   - **Frontend UI**: `http://localhost:3000`
-   - **Backend API Swagger**: `http://localhost:8000/docs`
-   - **Qdrant DB Dashboard**: `http://localhost:6333/dashboard`
+## 24. Running without Docker
+- Run backend locally on port `8000`.
+- Run frontend using `npm run dev` on port `3000`.
 
----
+## 25. Data Pipeline
+Execute raw CSV clean and load:
+```bash
+python scripts/cleaning/clean_data.py
+```
 
-## 6. API Reference
+## 26. Embedding Pipeline
+Trigger profile synchronization:
+```bash
+python -m backend.embeddings.generate_embeddings
+```
 
-The FastAPI backend exposes endpoints for all platform features:
-- **`GET /api/health`**: System status verification.
-- **`POST /api/recommend/resources`**: Matches and ranks candidates for project roles.
-- **`POST /api/search/employees`**: Cosine-similarity profile search.
-- **`POST /api/copilot/chat`**: Conversational reasoning router.
-- **`GET /api/forecast/six-month`**: Rolling 6-month capacity demand metrics.
+## 27. Testing
+Validate API routes:
+- Run backend checks: `pytest`
+- Run frontend builds: `npm run build`
 
-For the complete API request and response specifications, see the [API Documentation](docs/api.md).
+## 28. Troubleshooting
+Detailed remedies for database locks, LLM timeouts, and CORS errors are listed in `docs/14_Troubleshooting.md`.
 
----
+## 29. Future Improvements
+See `docs/15_Future_Roadmap.md` for roadmap enhancements.
 
-## 7. Operational Scripts
+## 30. Contributors
+- Surya Pratap Singh (Principal Architect)
 
-- **`.\scripts\ops\stop.bat`** (or `./scripts/ops/stop.sh`): Stops all active Docker containers without losing stored database volumes.
-- **`.\scripts\ops\reset.bat`** (or `./scripts/ops/reset.sh`): Stops containers and deletes all database volumes. Run this to clear database data and trigger a fresh seed and embedding sync.
-
----
-
-## 8. Verification and Tests
-
-To run the Python backend test suite locally:
-1. Activate your virtual environment and install requirements:
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
-2. Execute `pytest` targeting the tests directory:
-   ```bash
-   python -m pytest backend/tests/
-   ```
-
----
-
-## 9. Troubleshooting
-
-- **Ollama Model Download Failures**: If the model pull fails, verify your internet connection. Alternatively, you can run the pull command manually:
-  ```bash
-  docker exec -it resource-ollama ollama pull qwen2.5:7b
-  ```
-- **Connection Refused in Browser**: If you cannot access the frontend, make sure the `resource-frontend` container is running by typing `docker compose ps` and verify its logs using `docker compose logs frontend`.
-
----
-
-## 10. Contributors and License
-
-- **Maintainer**: Open Source Maintainer & AI Devops Engineer
-- **License**: MIT License - see LICENSE file for details.
+## 31. License
+Proprietary Platform License. All rights reserved.

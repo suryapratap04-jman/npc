@@ -5,6 +5,7 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { copilotService } from "@/services/copilot.service"
 import { fetchAPI } from "@/services/api"
+import { getEmployeeName } from "@/services/dashboard.service"
 import {
   Sparkles,
   Send,
@@ -208,7 +209,7 @@ export default function CopilotPage() {
           if (recs) {
             tableData = recs.recommendations.map((c: any) => ({
               id: c.employee_id,
-              name: `Resource ${c.employee_id}`,
+              name: getEmployeeName(c.employee_id),
               role: c.job_name,
               score: Math.round(c.final_score <= 1 ? c.final_score * 100 : c.final_score),
               avail: c.availability_date,

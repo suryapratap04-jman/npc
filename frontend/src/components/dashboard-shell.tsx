@@ -170,7 +170,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             )}
           </Link>
           <a 
-            href="https://atlassian.com" 
+            href="https://.com" 
             target="_blank" 
             rel="noopener noreferrer"
             className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors group relative"
@@ -210,7 +210,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   <div className="h-6 w-6 rounded bg-blue-600 flex items-center justify-center text-white font-extrabold text-xs shadow-sm">
                     A
                   </div>
-                  <span className="font-semibold text-foreground/90">Atlassian Analytics</span>
+                  <span className="font-semibold text-foreground/90">Resource Analytics</span>
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded" onClick={() => setIsMobileSidebarOpen(false)}>
                   <X className="h-4.5 w-4.5" />

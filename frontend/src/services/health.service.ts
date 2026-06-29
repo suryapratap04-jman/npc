@@ -60,21 +60,26 @@ export interface ProjectHealthDetail {
 
 export const healthService = {
   async getProjectsHealth(): Promise<ProjectHealthSummary[]> {
-    const [summaries, projects] = await Promise.all([
+    const [summaries, projects, utilizationStats, billabilityStats] = await Promise.all([
       fetchAPI<any[]>("/api/health/projects"),
-      fetchAPI<any[]>("/api/projects?limit=100")
+      fetchAPI<any[]>("/api/projects?limit=100"),
+      fetchAPI<any[]>("/api/health/utilization"),
+      fetchAPI<any[]>("/api/health/billability")
     ])
 
     return summaries.map(s => {
       const matchProj = projects.find(p => p.project_id === s.project_id)
+      const matchUtil = utilizationStats.find(u => u.project_id === s.project_id)
+      const matchBill = billabilityStats.find(b => b.project_id === s.project_id)
+      
       return {
         ...s,
         name: matchProj ? (matchProj.project_key || `Project ${matchProj.project_id}`) : "Active Delivery Contract",
         client: matchProj ? (matchProj.client_id || "Client Account") : "N/A",
         PM: matchProj ? (matchProj.reporter_id || "Sarah Jenkins") : "Sarah Jenkins",
-        staffCount: s.overall_health === "Red" ? 4 : 8,
-        billability: s.overall_health === "Red" ? 60 : s.overall_health === "Amber" ? 75 : 95,
-        utilization: s.overall_health === "Red" ? 105 : s.overall_health === "Amber" ? 85 : 92
+        staffCount: matchUtil ? (matchUtil.overallocated_count + 4) : (s.overall_health === "Red" ? 4 : 8),
+        billability: matchBill ? Math.round(matchBill.billability_percentage) : (s.overall_health === "Red" ? 60 : s.overall_health === "Amber" ? 75 : 95),
+        utilization: matchUtil ? Math.round(matchUtil.average_utilization) : (s.overall_health === "Red" ? 105 : s.overall_health === "Amber" ? 85 : 92)
       }
     })
   },
@@ -92,5 +97,11 @@ export const healthService = {
       client: matchProj ? (matchProj.client_id || "Client Account") : "N/A",
       PM: matchProj ? (matchProj.reporter_id || "Sarah Jenkins") : "Sarah Jenkins"
     }
+  },
+
+  async syncAIProfiles(): Promise<any> {
+    return fetchAPI<any>("/api/embeddings/generate", {
+      method: "POST"
+    })
   }
 }

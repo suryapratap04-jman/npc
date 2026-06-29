@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { dashboardService } from "@/services/dashboard.service"
+import { healthService } from "@/services/health.service"
 import Loading from "@/app/loading"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -157,7 +158,12 @@ export default function DashboardPage() {
             variant="outline"
             size="xs"
             onClick={async () => {
-              alert("Vector Database trigger indexing simulated successfully.")
+              try {
+                await healthService.syncAIProfiles()
+                alert("Vector Database trigger indexing completed successfully.")
+              } catch (e: any) {
+                alert(`Failed to synchronize embeddings: ${e.detail || e.message}`)
+              }
             }}
             className="flex items-center gap-1.5 text-xs text-muted-foreground"
           >

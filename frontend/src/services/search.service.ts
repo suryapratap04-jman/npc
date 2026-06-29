@@ -1,4 +1,5 @@
 import { fetchAPI } from "./api"
+import { getEmployeeName } from "./dashboard.service"
 
 export interface SearchResultItem {
   id: string
@@ -29,7 +30,6 @@ export const searchService = {
     const limit = 10
     const promises: Promise<any[]>[] = []
 
-    // Decouple checks based on active scopes
     const includeEmployees = category === "all" || category === "employee"
     const includeProjects = category === "all" || category === "project"
 
@@ -61,28 +61,37 @@ export const searchService = {
       promises.push(Promise.resolve([]))
     }
 
-    const [empHits, projHits] = await Promise.all(promises)
+    // Parallel fetch employees list & projects list from relational DB for enrichment
+    const [empHits, projHits, rawEmployees, rawProjects] = await Promise.all([
+      promises[0],
+      promises[1],
+      fetchAPI<any[]>("/api/employees?limit=100").catch(() => []),
+      fetchAPI<any[]>("/api/projects?limit=100").catch(() => [])
+    ])
 
     const mappedResults: SearchResultItem[] = []
 
     // Map Employees Qdrant payloads to UI Schema
     empHits.forEach((hit: VectorSearchHit) => {
       const p = hit.payload || {}
+      const empId = String(hit.id || p.employee_id)
+      const empMatch = rawEmployees.find(e => e.employee_id === empId)
+      
       mappedResults.push({
-        id: String(hit.id || p.employee_id),
-        name: p.name || `Employee ${hit.id}`,
-        title: p.job_name || "Engineer",
+        id: empId,
+        name: getEmployeeName(empId),
+        title: p.job_name || empMatch?.job_name || "Engineer",
         type: "Employee",
-        subtitle: `${p.department_name || "Engineering"} CoE &bull; Location: ${p.location || "Remote"}`,
-        details: `Skills matched: ${(p.skills || []).slice(0, 4).join(", ")}. Experience: ${p.experience_years || 4} years.`,
+        subtitle: `${p.department_name || empMatch?.department_name || "Engineering"} CoE &bull; Location: ${p.location || empMatch?.location || "Remote"}`,
+        details: `Skills matched: ${(p.skills || empMatch?.skills || []).slice(0, 4).join(", ")}. Experience: ${empMatch?.experience_years || 4} years.`,
         similarity: hit.score,
         profile: {
-          department: p.department_name || "Engineering",
-          currentProject: p.current_project_id || "Bench / Unallocated",
-          experience: p.experience_years || 4,
-          availability: p.allocation_percentage ? (100 - p.allocation_percentage) : 100,
-          skills: p.skills || [],
-          competencies: p.competencies || []
+          department: p.department_name || empMatch?.department_name || "Engineering",
+          currentProject: empMatch?.current_project_id ? (rawProjects.find(pr => pr.project_id === empMatch.current_project_id)?.project_key || empMatch.current_project_id) : "Bench / Unallocated",
+          experience: empMatch?.experience_years || 4,
+          availability: empMatch?.allocation_percentage ? (100 - empMatch.allocation_percentage) : 100,
+          skills: p.skills || empMatch?.skills || [],
+          competencies: empMatch?.competencies || []
         }
       })
     })
@@ -90,19 +99,22 @@ export const searchService = {
     // Map Projects Qdrant payloads to UI Schema
     projHits.forEach((hit: VectorSearchHit) => {
       const p = hit.payload || {}
+      const projId = String(hit.id || p.id)
+      const projMatch = rawProjects.find(pr => pr.project_id === projId)
+      
       mappedResults.push({
-        id: String(hit.id || p.id),
-        name: p.name || `Project ${hit.id}`,
-        title: p.client || "Client Project",
+        id: projId,
+        name: p.name || projMatch?.project_key || `Project ${projId}`,
+        title: p.client || projMatch?.client_id || "Client Project",
         type: "Project",
-        subtitle: `Project Manager: ${p.project_manager || "Sarah Jenkins"} &bull; Client: ${p.client || "Delta"}`,
-        details: `Duration: ${p.start_date || "2026-08"} to ${p.end_date || "2027-02"}. Status: ${p.project_status || "Active"}.`,
+        subtitle: `Project Manager: ${p.project_manager || projMatch?.reporter_id || "Sarah Jenkins"} &bull; Client: ${p.client || projMatch?.client_id || "Delta"}`,
+        details: `Duration: ${p.start_date || projMatch?.project_start_date || "2026-08"} to ${p.end_date || projMatch?.project_end_date || "2027-02"}. Status: ${p.project_status || projMatch?.project_status || "Active"}.`,
         similarity: hit.score,
         profile: {
-          progress: p.project_status === "Active" ? 75 : 100,
-          status: p.project_status === "Active" ? "Amber" : "Green",
+          progress: (p.project_status || projMatch?.project_status) === "Active" ? 75 : 100,
+          status: (p.project_status || projMatch?.project_status) === "Active" ? "Amber" : "Green",
           staffCount: 6,
-          riskFactor: p.project_status === "Active" ? "Staff vacancy for critical role" : "On schedule"
+          riskFactor: (p.project_status || projMatch?.project_status) === "Active" ? "Staff vacancy for critical role" : "On schedule"
         }
       })
     })

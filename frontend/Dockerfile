@@ -1,10 +1,10 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Install dependencies first for caching
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
 
 # Copy the rest of the application files
 COPY . .

@@ -106,15 +106,19 @@ function RecommendationWorkspace() {
     queryKey: ["projectsList"],
     queryFn: async () => {
       const summaries = await recommendationService.getProjects()
-      return summaries.map(s => ({
-        id: s.id,
-        name: s.name || `Project ${s.id}`,
-        rolesNeeded: s.id === "CLI-201" 
-          ? ["React", "TypeScript", "Next.js"] 
-          : s.id === "CLI-108"
-          ? ["Python", "PostgreSQL", "Django"]
-          : ["React", "Python"]
-      }))
+      return summaries.map(s => {
+        const skillsArray = s.skillset
+          ? s.skillset.split(",")
+              .map(sk => sk.trim())
+              .filter(sk => sk.length > 0)
+          : []
+        
+        return {
+          id: s.id,
+          name: s.name,
+          rolesNeeded: skillsArray
+        }
+      })
     }
   })
 
@@ -131,7 +135,7 @@ function RecommendationWorkspace() {
     queryKey: ["recommendations", selectedProjectId, experienceLevel, department, availabilityThreshold],
     queryFn: async () => {
       const matchProj = projects.find(p => p.id === selectedProjectId)
-      const requiredSkills = matchProj?.rolesNeeded || ["React", "Python"]
+      const requiredSkills = matchProj?.rolesNeeded || []
 
       const req: RecommendationRequest = {
         project_id: selectedProjectId,
@@ -402,7 +406,7 @@ function RecommendationWorkspace() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 flex items-center justify-center font-bold text-sm shadow-inner">
-                          {cand.avatar}
+                          {cand.name ? cand.name.split(" ").map(n => n[0]).join("").toUpperCase() : ""}
                         </div>
                         <div>
                           <h4 className="font-semibold text-sm text-foreground">{cand.name}</h4>
@@ -509,7 +513,7 @@ function RecommendationWorkspace() {
                       <div className="space-y-3.5">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-full bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 flex items-center justify-center font-bold text-xs">
-                            {cand.avatar}
+                            {cand.name ? cand.name.split(" ").map(n => n[0]).join("").toUpperCase() : ""}
                           </div>
                           <div>
                             <h4 className="font-semibold text-sm">{cand.name}</h4>
@@ -608,7 +612,7 @@ function RecommendationWorkspace() {
                   {/* Avatar Profile Info */}
                   <div className="flex items-center gap-3 bg-muted/20 p-3 rounded-lg border border-border/40">
                     <div className="h-10 w-10 rounded-full bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 flex items-center justify-center font-bold text-base">
-                      {selectedCandidate.avatar}
+                      {selectedCandidate.name ? selectedCandidate.name.split(" ").map(n => n[0]).join("").toUpperCase() : ""}
                     </div>
                     <div>
                       <h4 className="font-bold text-sm text-foreground">{selectedCandidate.name}</h4>

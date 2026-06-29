@@ -18,9 +18,10 @@ services:
       - resource-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 15
+      start_period: 60s
 
   # Vector Database for semantic profile similarity searches
   qdrant:
@@ -34,11 +35,6 @@ services:
       - qdrant_data:/qdrant/storage
     networks:
       - resource-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:6333/readyz || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   # Local LLM orchestrator (Ollama)
   ollama:
@@ -52,10 +48,11 @@ services:
     networks:
       - resource-network
     healthcheck:
-      test: ["CMD-SHELL", "ollama list || exit 0"]
+      test: ["CMD-SHELL", "ollama list || exit 1"]
       interval: 10s
-      timeout: 10s
-      retries: 5
+      timeout: 5s
+      retries: 15
+      start_period: 60s
 
   # FastAPI Backend API & Decision Engines
   backend:
@@ -83,14 +80,15 @@ services:
       db:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
+        condition: service_started
       ollama:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8000/api/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
   # Next.js Frontend UI
   frontend:
