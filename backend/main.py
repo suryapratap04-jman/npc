@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from backend.config.settings import settings
 from backend.database.session import get_db, engine
-from backend.database.models import Employee, Project, Skill, Pipeline
+from backend.database.models import Employee, Project, Skill, Pipeline, Allocation, Competency
 from backend.embeddings.generate_embeddings import run_indexing
 from backend.recommendation import RecommendationService, RecommendationRequest, RecommendationResponse, BenchmarkResponse, RecommendationBenchmarker
 from backend.rag.retriever import VectorRetriever
@@ -132,7 +132,63 @@ def get_employees(db: Session = Depends(get_db), limit: int = 20, location: Opti
     query = db.query(Employee)
     if location:
         query = query.filter(Employee.location.ilike(location))
-    return query.limit(limit).all()
+    employees = query.limit(limit).all()
+    
+    enriched = []
+    for emp in employees:
+        skills = db.query(Skill).filter(Skill.employee_id == emp.employee_id).all()
+        comp = db.query(Competency).filter(Competency.employee_id == emp.employee_id).first()
+        allocs = db.query(Allocation).filter(
+            Allocation.employee_id == emp.employee_id,
+            Allocation.is_allocation_active == 1
+        ).all()
+        
+        allocation_percentage = sum(a.allocation_by_percentage for a in allocs if a.allocation_by_percentage)
+        
+        current_project_id = None
+        if allocs:
+            sorted_allocs = sorted(allocs, key=lambda a: a.allocation_by_percentage or 0, reverse=True)
+            current_project_id = sorted_allocs[0].project_id
+
+        skill_names = [s.skill for s in skills if s.skill]
+        
+        comp_names = []
+        if comp:
+            comp_map = {
+                "Stakeholder Management": comp.stakeholder_management_score,
+                "Consultative Guidance": comp.consultative_guidance_score,
+                "Techno-Functional Expertise": comp.techno_functional_score,
+                "Communication Skills": comp.communication_score,
+                "Ambiguity Navigation": comp.ambiguity_navigation_score,
+                "Capabilities Articulation": comp.capabilities_articulation_score,
+                "Solution Architecture": comp.solution_architecture_score,
+                "Project Planning": comp.project_planning_score
+            }
+            comp_names = [k for k, v in comp_map.items() if v is not None and v >= 3]
+
+        experience_years = max([s.experience_numeric for s in skills if s.experience_numeric is not None] or [4])
+
+        enriched.append({
+            "employee_id": emp.employee_id,
+            "location": emp.location,
+            "date_of_join": emp.date_of_join,
+            "date_of_resignation": emp.date_of_resignation,
+            "job_name": emp.job_name,
+            "department_name": emp.department_name,
+            "manager_id": emp.manager_id,
+            "account_status": emp.account_status,
+            "is_active_version": emp.is_active_version,
+            "impossible_value_flag": emp.impossible_value_flag,
+            
+            # Enriched fields
+            "allocation_percentage": allocation_percentage,
+            "current_project_id": current_project_id,
+            "skills": skill_names,
+            "competencies": comp_names,
+            "experience_years": experience_years,
+            "email": f"{emp.employee_id.lower()}@company.com"
+        })
+    return enriched
 
 @app.get("/api/projects")
 def get_projects(db: Session = Depends(get_db), limit: int = 20, status: Optional[str] = None):

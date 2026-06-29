@@ -38,9 +38,10 @@ class BusinessRulesEngine:
                 logger.debug(f"Rejecting candidate {emp_id}: employee has resigned as of {emp.date_of_resignation}.")
                 continue
 
-            # Rule 3: High utilization checks (e.g. >= 90%)
-            if cand["utilization"] >= self.util_limit:
-                logger.debug(f"Rejecting candidate {emp_id}: utilization {cand['utilization']}% exceeds threshold {self.util_limit}%.")
+            # Rule 3: High utilization checks (e.g. >= 100%)
+            # Genuine unavailability is defined as 100% or more allocated during the project window
+            if cand["utilization"] >= 100.0:
+                logger.debug(f"Rejecting candidate {emp_id}: utilization {cand['utilization']}% is 100% or more.")
                 continue
 
             # Rule 4: Mandatory skills validation
@@ -58,14 +59,14 @@ class BusinessRulesEngine:
                     continue
 
             # Rule 5: Unavailable before start date
-            # If they have active allocations that end after the project starts, and their utilization makes them too busy
+            # If they have active allocations that end after the project starts, and their utilization makes them genuinely unavailable (>= 100%)
             is_unavailable = False
             for alloc in cand["allocations"]:
                 if alloc.is_allocation_active == 1 and alloc.allocated_end_date:
                     # If current allocation goes past project start date
                     if alloc.allocated_end_date > proj_start:
                         # If their utilization leaves them with zero capacity
-                        if cand["utilization"] >= self.util_limit:
+                        if cand["utilization"] >= 100.0:
                             is_unavailable = True
                             break
             

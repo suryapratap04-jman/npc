@@ -77,11 +77,31 @@ class RecommendationService:
         selected_strategy = (request.strategy or "hybrid_v1").lower().strip()
         logger.info(f"Triggering recommendations with strategy '{selected_strategy}' for project {request.project_id}")
 
+        # Parse project start date and determine target window
+        import datetime
+        from backend.database.models import Project
+        
+        try:
+            proj_start = datetime.datetime.strptime(request.project_start_date, "%Y-%m-%d").date()
+        except Exception:
+            proj_start = datetime.date.today() + datetime.timedelta(days=30)
+            
+        proj_end = None
+        if request.project_id:
+            proj = self.db.query(Project).filter(Project.project_id == request.project_id).first()
+            if proj and proj.project_end_date:
+                proj_end = proj.project_end_date
+                
+        if not proj_end:
+            proj_end = proj_start + datetime.timedelta(days=180) # default to 6 months
+
         # 1. Candidate Retrieval (SQL + Qdrant similarity)
         raw_candidates = self.retriever.retrieve_candidates(
             required_skills=request.required_skills,
             project_id=request.project_id,
-            top_n=50
+            top_n=50,
+            project_start_date=proj_start,
+            project_end_date=proj_end
         )
 
         # 2. Apply Business Rules Filter

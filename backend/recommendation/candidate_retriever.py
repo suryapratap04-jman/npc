@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from datetime import date
 from typing import List, Dict, Any, Set, Optional
 from sqlalchemy.orm import Session
 from qdrant_client import QdrantClient
@@ -62,7 +63,13 @@ class CandidateRetriever:
             logger.error(f"Error querying similar projects in Qdrant: {e}")
             return []
 
-    def retrieve_candidates(self, required_skills: List[str], project_id: Optional[str] = None, top_n: int = 50) -> List[Dict[str, Any]]:
+    def retrieve_candidates(
+        self, 
+        required_skills: List[str], 
+        project_id: Optional[str] = None, top_n: int = 50,
+        project_start_date: Optional[date] = None,
+        project_end_date: Optional[date] = None
+    ) -> List[Dict[str, Any]]:
         """
         Retrieves a candidate pool by combining Postgres active employees and Qdrant similarity matches.
         """
@@ -95,6 +102,14 @@ class CandidateRetriever:
         for a in all_active_allocations:
             if a.employee_id:
                 allocations_map[a.employee_id].append(a)
+
+        # Retrieve non-BAU projects to filter out internal/overhead allocations
+        non_bau_project_ids = set()
+        try:
+            active_projects = self.db.query(Project).filter(Project.is_active_version == 1).all()
+            non_bau_project_ids = {p.project_id for p in active_projects if p.client_id != "CLIENT_127" and p.type_of_project != "BAU Activity"}
+        except Exception as p_err:
+            logger.warning(f"Could not load projects mapping in retriever: {p_err}")
 
         # 3. Hybrid search - Qdrant Employee similarity
         qdrant_scores: Dict[str, float] = {}
@@ -129,14 +144,27 @@ class CandidateRetriever:
 
         # 5. Compile candidate pool objects
         candidate_pool = []
+        
+        # Default start/end window for overlapping check if none passed
+        from datetime import timedelta
+        proj_start = project_start_date or date.today()
+        proj_end = project_end_date or (proj_start + timedelta(days=180))
+
         for emp in employees:
             emp_id = emp.employee_id
             emp_skills = skills_map.get(emp_id, [])
             emp_comp = competencies_map.get(emp_id, None)
             emp_allocs = allocations_map.get(emp_id, [])
 
-            # Compute current utilization
-            utilization = sum(float(a.allocation_by_percentage or 0.0) for a in emp_allocs)
+            # Compute overlapping non-BAU (billable) utilization during requested window
+            billable_utilization = 0.0
+            for a in emp_allocs:
+                if a.is_allocation_active == 1 and a.project_id in non_bau_project_ids:
+                    a_start = a.allocated_start_date or date(2020, 1, 1)
+                    a_end = a.allocated_end_date or date(2099, 12, 31)
+                    # Check overlap with project window
+                    if not (a_end < proj_start or a_start > proj_end):
+                        billable_utilization += float(a.allocation_by_percentage or 100.0)
 
             # Determine Qdrant semantic/similar project score labels
             qdrant_score = qdrant_scores.get(emp_id, 0.0)
@@ -147,7 +175,8 @@ class CandidateRetriever:
                 "skills": emp_skills,
                 "competency": emp_comp,
                 "allocations": emp_allocs,
-                "utilization": utilization,
+                "utilization": billable_utilization,
+                "raw_utilization": sum(float(a.allocation_by_percentage or 0.0) for a in emp_allocs if a.is_allocation_active == 1),
                 "qdrant_score": qdrant_score,
                 "has_similar_proj_experience": has_similar_proj_experience
             })
