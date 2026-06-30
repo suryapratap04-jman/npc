@@ -237,12 +237,40 @@ def get_projects(db: Session = Depends(get_db), limit: int = 20, status: Optiona
 
 
 
-@app.get("/api/pipeline")
-def get_pipeline(db: Session = Depends(get_db), limit: int = 20, client: Optional[str] = None):
-    query = db.query(Pipeline)
+from backend.recommendation.schemas import PipelineOpportunity
+
+@app.get("/api/pipeline", response_model=List[PipelineOpportunity])
+def get_pipeline(db: Session = Depends(get_db), limit: int = 100, client: Optional[str] = None):
+    query = db.query(Pipeline).filter(Pipeline.skillset != None, Pipeline.skillset != "")
     if client:
         query = query.filter(Pipeline.client.ilike(client))
-    return query.limit(limit).all()
+    entries = query.limit(limit).all()
+    res = []
+    for p in entries:
+        client_name = p.client or "Unknown"
+        if client_name.strip().lower() == "unknown":
+            client_name = "General Client Opportunity"
+        
+        tech = p.solution or "Consulting Delivery"
+        role = p.resources_requested or "Consultant"
+        proj_name = f"{client_name} - {tech} ({role})"
+        
+        skills = [s.strip() for s in (p.skillset or "").split(",") if s.strip()]
+        team_size = f"{p.percentage or '100'}%"
+        
+        res.append(PipelineOpportunity(
+            id=str(p.id),
+            project_name=proj_name,
+            client=client_name,
+            technology=tech,
+            domain=str(p.cluster or "N/A"),
+            required_skills=skills,
+            start_date=str(p.likely_start_date or "2026-08-01"),
+            team_size=team_size,
+            status=p.status or "Not Resourced",
+            project_type=p.request_type or "AI"
+        ))
+    return res
 
 # --- EMBEDDING OPS ---
 

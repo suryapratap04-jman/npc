@@ -1,13 +1,13 @@
-# Project Overview
+# 01. Project Overview
 
-The AI Resource Management Platform is a decision intelligence platform designed to streamline human resource allocations, project assignments, and capacity forecasts across a technical services organization.
+The **AI Resource Management Platform** is an enterprise-grade decision intelligence platform designed to streamline human resource allocations, project assignments, and capacity forecasts across a technical services organization.
 
 ## 1. Business Problem
-Managing a complex technical consulting organization involves balancing employee allocations and client projects. The key business challenges are:
-- **High Bench Overhead**: Delays in re-allocating staff whose projects have rolled off results in unassigned, non-billable hours.
+Managing a complex technical consulting organization requires balancing employee allocations and client projects. The key business challenges are:
+- **High Bench Overhead**: Delays in re-allocating staff whose projects have rolled off, resulting in unassigned, non-billable bench hours.
 - **Suboptimal Staffing Choices**: Manual assignment processes often result in technical mismatching, leading to project delivery delays or quality issues.
 - **Inaccurate Capacity Forecasting**: Resource planning relies on manual updates, resulting in poor visibility into future talent deficits or surpluses.
-- **Stale Pipeline Coordination**: Recruiting and training programs lack visibility into upcoming sales pipeline wins.
+- **Disconnected Sales Pipelines**: Recruiting and training programs lack visibility into upcoming sales pipeline wins.
 
 ## 2. Proposed Solution
 This platform addresses these problems by integrating three critical systems:

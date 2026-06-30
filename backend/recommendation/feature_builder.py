@@ -39,10 +39,21 @@ class FeatureBuilder:
         # --- 1. SKILL FEATURES ---
         emp_skills_lower = set()
         for s in skills:
-            if s.skill:
-                emp_skills_lower.add(s.skill.lower().strip())
-            if s.subskill:
-                emp_skills_lower.add(s.subskill.lower().strip())
+            # Support both DictObject/SQLAlchemy object and dictionary types
+            score_val = 0.0
+            if isinstance(s, dict):
+                score_val = s.get("score", 0.0)
+            else:
+                try:
+                    score_val = getattr(s, "score", 0.0)
+                except AttributeError:
+                    score_val = 0.0
+                    
+            if score_val is not None and float(score_val) > 0.0:
+                if s.skill:
+                    emp_skills_lower.add(s.skill.lower().strip())
+                if s.subskill:
+                    emp_skills_lower.add(s.subskill.lower().strip())
         
         # Skill Match Score based on IDF weights
         sum_matching_idf = 0.0

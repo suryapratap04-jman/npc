@@ -98,43 +98,10 @@ class CandidateRetriever:
         """
         logger.info(f"Retrieving candidate pool. Skills: {required_skills}, Project: {project_id}, Tech: {technology}, Domain: {domain}")
 
-        # 1. Fetch active employees from Postgres
-        employees = self.db.query(Employee).filter(
-            (Employee.date_of_resignation == None) | (Employee.date_of_resignation > Employee.date_of_join)
-        ).all()
-        
-        if not employees:
-            logger.warning("No active employees found in PostgreSQL database.")
-            return []
+        from backend.cache.cache_service import cache_service
+        from backend.recommendation.precomputation import DictObject
 
-        # 2. Batch retrieve related structures to avoid N+1 query overhead
-        all_skills = self.db.query(Skill).all()
-        skills_map = defaultdict(list)
-        for s in all_skills:
-            if s.employee_id:
-                skills_map[s.employee_id].append(s)
-
-        all_competencies = self.db.query(Competency).all()
-        competencies_map = {c.employee_id: c for c in all_competencies}
-
-        all_active_allocations = self.db.query(Allocation).filter(
-            Allocation.is_allocation_active == 1
-        ).all()
-        
-        allocations_map = defaultdict(list)
-        for a in all_active_allocations:
-            if a.employee_id:
-                allocations_map[a.employee_id].append(a)
-
-        # Retrieve non-BAU projects to filter out internal/overhead allocations
-        non_bau_project_ids = set()
-        try:
-            active_projects = self.db.query(Project).filter(Project.is_active_version == 1).all()
-            non_bau_project_ids = {p.project_id for p in active_projects if p.client_id != "CLIENT_127" and p.type_of_project != "BAU Activity"}
-        except Exception as p_err:
-            logger.warning(f"Could not load projects mapping in retriever: {p_err}")
-
-        # 3. Hybrid search - Qdrant Employee similarity
+        # 1. Hybrid search - Qdrant Employee similarity
         qdrant_scores: Dict[str, float] = {}
         try:
             query_parts = [f"Skills requested: {', '.join(required_skills)}"]
@@ -147,7 +114,7 @@ class CandidateRetriever:
             query_text = ", ".join(query_parts)
             
             from backend.cache.cache_keys import make_embedding_key
-            from backend.cache.cache_service import cache_service, TTL_EMBEDDING, TTL_SEARCH
+            from backend.cache.cache_service import TTL_EMBEDDING, TTL_SEARCH
             
             embedding_key = make_embedding_key(query_text)
             query_vector = cache_service.get(embedding_key)
@@ -177,7 +144,7 @@ class CandidateRetriever:
         except Exception as q_err:
             logger.warning(f"Could not perform semantic Qdrant employee query: {q_err}")
 
-        # 4. Hybrid search - Similar historical project employees
+        # 2. Hybrid search - Similar historical project employees
         historical_allocated_employee_ids: Set[str] = set()
         if project_id:
             similar_project_ids = self.get_similar_projects(project_id, limit=5)
@@ -190,13 +157,109 @@ class CandidateRetriever:
                     if ha.employee_id:
                         historical_allocated_employee_ids.add(ha.employee_id)
 
-        # 5. Compile candidate pool objects
+        # 3. Check if precomputed pool exists in Redis cache
+        cached_pool = cache_service.get("precomputed:candidate_pool")
+        if cached_pool:
+            logger.info("Retrieving candidate pool from precomputed Redis cache...")
+            candidate_pool = []
+            
+            # Default start/end window for overlapping check if none passed
+            from datetime import timedelta
+            proj_start = project_start_date or date.today()
+            proj_end = project_end_date or (proj_start + timedelta(days=180))
+            
+            for item in cached_pool:
+                emp_id = item["employee_id"]
+                emp_skills = [DictObject(s) for s in item["skills"]]
+                emp_comp = DictObject(item["competency"]) if item["competency"] else None
+                emp_allocs = [DictObject(a) for a in item["allocations"]]
+                emp_dict = DictObject(item["employee"])
+                
+                from backend.recommendation.utilization import calculate_active_utilization
+                
+                # Fetch projects_info
+                projects_info = cache_service.get("precomputed:projects_info")
+                if not projects_info:
+                    active_projects = self.db.query(Project).filter(Project.is_active_version == 1).all()
+                    projects_info = {
+                        p.project_id: {
+                            "client_id": p.client_id,
+                            "type_of_project": p.type_of_project,
+                            "project_end_date": str(p.project_end_date) if p.project_end_date else None
+                        }
+                        for p in active_projects
+                    }
+
+                billable_utilization = calculate_active_utilization(
+                    emp_allocs, projects_info, proj_start, proj_end
+                )
+                raw_util = calculate_active_utilization(emp_allocs, projects_info)
+                            
+                qdrant_score = qdrant_scores.get(emp_id, 0.0)
+                has_similar_proj_experience = emp_id in historical_allocated_employee_ids
+                
+                candidate_pool.append({
+                    "employee": emp_dict,
+                    "skills": emp_skills,
+                    "competency": emp_comp,
+                    "allocations": emp_allocs,
+                    "utilization": billable_utilization,
+                    "raw_utilization": raw_util,
+                    "qdrant_score": qdrant_score,
+                    "has_similar_proj_experience": has_similar_proj_experience
+                })
+            logger.info(f"Loaded {len(candidate_pool)} candidates from precomputed pool.")
+            return candidate_pool
+
+        # Fallback to Database Query Path
+        logger.info("Falling back to database query path for candidate retrieval...")
+        
+        # 1. Fetch active employees from Postgres
+        employees = self.db.query(Employee).filter(
+            (Employee.date_of_resignation == None) | (Employee.date_of_resignation > Employee.date_of_join)
+        ).all()
+        
+        if not employees:
+            logger.warning("No active employees found in PostgreSQL database.")
+            return []
+
+        # 2. Batch retrieve related structures to avoid N+1 query overhead
+        all_skills = self.db.query(Skill).all()
+        skills_map = defaultdict(list)
+        for s in all_skills:
+            if s.employee_id:
+                skills_map[s.employee_id].append(s)
+
+        all_competencies = self.db.query(Competency).all()
+        competencies_map = {c.employee_id: c for c in all_competencies}
+
+        all_active_allocations = self.db.query(Allocation).filter(
+            Allocation.is_allocation_active == 1
+        ).all()
+        
+        allocations_map = defaultdict(list)
+        for a in all_active_allocations:
+            if a.employee_id:
+                allocations_map[a.employee_id].append(a)
+
+        # Retrieve projects info
+        active_projects = self.db.query(Project).filter(Project.is_active_version == 1).all()
+        projects_info = {
+            p.project_id: {
+                "client_id": p.client_id,
+                "type_of_project": p.type_of_project,
+                "project_end_date": p.project_end_date
+            }
+            for p in active_projects
+        }
+
+        # Compile candidate pool objects
         candidate_pool = []
         
-        # Default start/end window for overlapping check if none passed
         from datetime import timedelta
         proj_start = project_start_date or date.today()
         proj_end = project_end_date or (proj_start + timedelta(days=180))
+        from backend.recommendation.utilization import calculate_active_utilization
 
         for emp in employees:
             emp_id = emp.employee_id
@@ -204,17 +267,11 @@ class CandidateRetriever:
             emp_comp = competencies_map.get(emp_id, None)
             emp_allocs = allocations_map.get(emp_id, [])
 
-            # Compute overlapping non-BAU (billable) utilization during requested window
-            billable_utilization = 0.0
-            for a in emp_allocs:
-                if a.is_allocation_active == 1 and a.project_id in non_bau_project_ids:
-                    a_start = a.allocated_start_date or date(2020, 1, 1)
-                    a_end = a.allocated_end_date or date(2099, 12, 31)
-                    # Check overlap with project window
-                    if not (a_end < proj_start or a_start > proj_end):
-                        billable_utilization += float(a.allocation_by_percentage or 100.0)
+            billable_utilization = calculate_active_utilization(
+                emp_allocs, projects_info, proj_start, proj_end
+            )
+            raw_util = calculate_active_utilization(emp_allocs, projects_info)
 
-            # Determine Qdrant semantic/similar project score labels
             qdrant_score = qdrant_scores.get(emp_id, 0.0)
             has_similar_proj_experience = emp_id in historical_allocated_employee_ids
 
@@ -224,7 +281,7 @@ class CandidateRetriever:
                 "competency": emp_comp,
                 "allocations": emp_allocs,
                 "utilization": billable_utilization,
-                "raw_utilization": sum(float(a.allocation_by_percentage or 0.0) for a in emp_allocs if a.is_allocation_active == 1),
+                "raw_utilization": raw_util,
                 "qdrant_score": qdrant_score,
                 "has_similar_proj_experience": has_similar_proj_experience
             })

@@ -70,12 +70,40 @@ class HealthFeatureBuilder:
                 Allocation.is_allocation_active == 1
             ).all()
 
-            global_util = defaultdict(float)
+            # Group by employee_id
+            emp_global_allocs = defaultdict(list)
             for ga in global_allocs:
-                global_util[ga.employee_id] += float(ga.allocation_by_percentage or 0.0)
+                emp_global_allocs[ga.employee_id].append(ga)
 
+            # Retrieve active projects info
+            active_projects = self.db.query(Project).filter(Project.is_active_version == 1).all()
+            projects_info = {
+                p.project_id: {
+                    "client_id": p.client_id,
+                    "type_of_project": p.type_of_project,
+                    "project_end_date": p.project_end_date
+                }
+                for p in active_projects
+            }
+            
             for emp_id in emp_ids:
-                total_util = global_util[emp_id]
+                emp_allocs = emp_global_allocs[emp_id]
+                total_util = 0.0
+                for ga in emp_allocs:
+                    proj_info = projects_info.get(ga.project_id)
+                    if proj_info:
+                        if proj_info["client_id"] == "CLIENT_127" or proj_info["type_of_project"] == "BAU Activity":
+                            continue
+                        a_end = ga.allocated_end_date or proj_info["project_end_date"]
+                        if a_end and a_end < today:
+                            continue
+                    else:
+                        if ga.project_id and ga.project_id.startswith("CLIENT_127"):
+                            continue
+                        if ga.allocated_end_date and ga.allocated_end_date < today:
+                            continue
+                    total_util += float(ga.allocation_by_percentage or 100.0)
+
                 if total_util > 100.0:
                     overallocated_count += 1
                 elif total_util < 40.0:

@@ -39,7 +39,7 @@ def encode_in_chunks(model, texts: List[str], chunk_size: int = 128, batch_size:
         embeddings.extend(chunk_embeddings.tolist())
     return embeddings
 
-def build_employee_profile(emp: Employee, skills: List[Skill], comp: Competency, allocs: List[Allocation]) -> str:
+def build_employee_profile(emp: Employee, skills: List[Skill], comp: Competency, allocs: List[Allocation], projects_info: Dict[str, Any]) -> str:
     """Compiles a rich textual profile representation of an Employee for semantic indexing."""
     profile_parts = [
         f"Employee ID: {emp.employee_id}",
@@ -48,10 +48,11 @@ def build_employee_profile(emp: Employee, skills: List[Skill], comp: Competency,
         f"Location: {emp.location}"
     ]
     
-    # Skills details
-    if skills:
+    # Skills details (only match skills with score > 0.0)
+    valid_skills = [s for s in skills if getattr(s, "score", 0.0) and float(s.score) > 0.0]
+    if valid_skills:
         skill_strings = []
-        for s in skills:
+        for s in valid_skills:
             exp_str = f" ({s.experience})" if s.experience else ""
             score_str = f" score {s.score}" if s.score is not None else ""
             skill_strings.append(f"{s.skill} - {s.subskill}{exp_str}{score_str}")
@@ -79,11 +80,33 @@ def build_employee_profile(emp: Employee, skills: List[Skill], comp: Competency,
             profile_parts.append("Qualitative Core Competencies: " + "; ".join(comp_strings))
             
     # Allocation status
-    active_allocs = [a for a in allocs if a.is_allocation_active == 1]
-    total_util = sum(a.allocation_by_percentage for a in active_allocs if a.allocation_by_percentage)
+    from backend.recommendation.utilization import calculate_active_utilization
+    import datetime
+    today = datetime.date.today()
+    
+    total_util = calculate_active_utilization(allocs, projects_info)
     profile_parts.append(f"Current Utilization Rate: {total_util}%")
-    if active_allocs:
-        proj_list = [f"Project {a.project_id} (allocation {a.allocation_by_percentage}%)" for a in active_allocs]
+    
+    # Filter active client allocations (excluding JMAN internal/BAU and expired allocations)
+    active_client_allocs = []
+    for a in allocs:
+        if a.is_allocation_active == 1:
+            proj_info = projects_info.get(a.project_id)
+            if proj_info:
+                if proj_info["client_id"] == "CLIENT_127" or proj_info["type_of_project"] == "BAU Activity":
+                    continue
+                a_end = a.allocated_end_date or proj_info["project_end_date"]
+                if a_end and a_end < today:
+                    continue
+            else:
+                if a.project_id and a.project_id.startswith("CLIENT_127"):
+                    continue
+                if a.allocated_end_date and a.allocated_end_date < today:
+                    continue
+            active_client_allocs.append(a)
+
+    if active_client_allocs:
+        proj_list = [f"Project {a.project_id} (allocation {a.allocation_by_percentage}%)" for a in active_client_allocs]
         profile_parts.append("Active Projects: " + ", ".join(proj_list))
     else:
         profile_parts.append("Active Projects: None. Currently unallocated (bench status).")
@@ -103,7 +126,12 @@ def build_project_profile(proj: Project, allocs: List[Allocation]) -> str:
     ]
     
     if allocs:
-        active_allocs = [a for a in allocs if a.is_allocation_active == 1]
+        import datetime
+        today = datetime.date.today()
+        active_allocs = [
+            a for a in allocs 
+            if a.is_allocation_active == 1 and (a.allocated_end_date is None or a.allocated_end_date >= today)
+        ]
         profile_parts.append(f"Team Size: {len(active_allocs)} active resources allocated.")
     else:
         profile_parts.append("Team Size: No active resources allocated.")
@@ -163,6 +191,17 @@ def run_indexing():
 
     db = SessionLocal()
     try:
+        # Fetch active projects metadata for utilization engine checks
+        active_projects = db.query(Project).filter(Project.is_active_version == 1).all()
+        projects_info = {
+            p.project_id: {
+                "client_id": p.client_id,
+                "type_of_project": p.type_of_project,
+                "project_end_date": p.project_end_date
+            }
+            for p in active_projects
+        }
+
         # --- INDEX EMPLOYEES ---
         logger.info("Fetching employees from PostgreSQL to construct AI Profiles...")
         employees = db.query(Employee).all()
@@ -176,7 +215,7 @@ def run_indexing():
             comp = db.query(Competency).filter(Competency.employee_id == emp.employee_id).first()
             allocs = db.query(Allocation).filter(Allocation.employee_id == emp.employee_id).all()
             
-            profile_txt = build_employee_profile(emp, skills, comp, allocs)
+            profile_txt = build_employee_profile(emp, skills, comp, allocs, projects_info)
             profiles_txts.append(profile_txt)
             
             payload = {

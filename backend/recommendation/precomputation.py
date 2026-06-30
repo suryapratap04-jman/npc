@@ -110,6 +110,16 @@ def precompute_candidate_pool(db: Session) -> List[Dict[str, Any]]:
         if p.client_id != "CLIENT_127" and p.type_of_project != "BAU Activity":
             non_bau_project_ids.add(p.project_id)
 
+    projects_info = {
+        p.project_id: {
+            "client_id": p.client_id,
+            "type_of_project": p.type_of_project,
+            "project_end_date": str(p.project_end_date) if p.project_end_date else None
+        }
+        for p in active_projects
+    }
+    cache_service.set("precomputed:projects_info", projects_info, 3600 * 24 * 7)
+
     projects_name_map = {}
     for p in active_projects:
         projects_name_map[p.project_id] = f"{p.client_id or 'Client'} - {p.type_of_project or 'Engagement'}"
@@ -128,7 +138,9 @@ def precompute_candidate_pool(db: Session) -> List[Dict[str, Any]]:
             "location": emp.location,
             "date_of_join": str(emp.date_of_join) if emp.date_of_join else None,
             "date_of_resignation": str(emp.date_of_resignation) if emp.date_of_resignation else None,
-            "manager_id": emp.manager_id
+            "manager_id": emp.manager_id,
+            "account_status": emp.account_status,
+            "is_active_version": emp.is_active_version
         }
 
         pool.append({

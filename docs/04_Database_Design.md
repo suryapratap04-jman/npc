@@ -1,100 +1,66 @@
-# Database Design
+# 04. Database Design
 
-This document details the PostgreSQL relational database design, SQLAlchemy models, columns, types, and constraints configured in `backend/database/models.py`.
+This document details the relational database schema implemented in `backend/database/models.py`.
 
----
+```mermaid
+erDiagram
+    employees ||--o{ skills : possesses
+    employees ||--o{ competencies : has
+    employees ||--o{ allocations : assigned_to
+    projects ||--o{ allocations : holds
+```
 
-## 1. Relational Schema & Tables
+## 1. Table Definitions
 
-### Employee Table (`employees`)
-Stores master records of employees.
-- `employee_id` (String, Primary Key)
-- `location` (String)
-- `date_of_join` (Date)
-- `date_of_resignation` (Date, Nullable)
-- `job_name` (String, e.g. "Senior Consultant")
-- `department_name` (String, CoE)
-- `manager_id` (String)
-- `account_status` (Integer)
-- `is_active_version` (Integer)
-- `impossible_value_flag` (Integer)
+### `employees`
+- `employee_id` (VARCHAR, PK): Unique payroll identifier (e.g. `EMP10`).
+- `location` (VARCHAR): Operating office location.
+- `job_name` (VARCHAR): Staff designation/title.
+- `department_name` (VARCHAR): Assigned business department.
+- `is_active` (INTEGER): Active status (1 for active, 0 for resigned).
+- `resignation_date` (DATE): Planned departure date.
 
-### Project Table (`projects`)
-Tracks client contracts and delivery statuses.
-- `project_id` (String, Primary Key)
-- `project_key` (String, Unique Project Code)
-- `project_start_date` (Date)
-- `project_end_date` (Date)
-- `type_of_project` (String, e.g. "T&M", "Fixed Bid")
-- `project_status` (String, e.g. "ACTIVE", "CLOSED")
-- `reporter_id` (String, PM)
-- `approver_id` (String)
-- `client_id` (String)
-- `tech_coe` (String)
-- `proposition_coe` (String)
-- `is_active_version` (Integer)
-- `impossible_value_flag` (Integer)
+### `projects`
+- `project_id` (INTEGER, PK): Primary key.
+- `client_id` (VARCHAR): Target client name.
+- `type_of_project` (VARCHAR): Engagement type (e.g. Consulting, Delivery).
+- `project_start_date` (DATE): Timeline start date.
+- `project_end_date` (DATE): Target end date.
+- `project_manager` (VARCHAR): Assigned project manager.
+- `project_status` (VARCHAR): Project state (e.g. Active, Completed).
 
-### Allocation Table (`allocations`)
-Maps resources to projects with a timeline and commitment ratio.
-- `id` (Integer, Primary Key)
-- `allocation_id` (String)
-- `employee_id` (String, Foreign Key to employees)
-- `project_id` (String, Foreign Key to projects)
-- `allocation_start_date` (Date)
-- `allocation_end_date` (Date)
-- `allocation_by_percentage` (Float)
-- `is_allocation_active` (Integer, 1 = Active, 0 = Inactive)
-- `allocation_status` (String)
-- `billable_status` (String)
-- `fte` (Float)
-- `is_active_version` (Integer)
+### `allocations`
+- `id` (INTEGER, PK): Auto-increment primary key.
+- `employee_id` (VARCHAR, FK): References `employees.employee_id`.
+- `project_id` (INTEGER, FK): References `projects.project_id`.
+- `allocation_by_percentage` (DOUBLE PRECISION): Allocation workload ratio (FTE percentage).
+- `allocated_start_date` (DATE): Assignment start date.
+- `allocated_end_date` (DATE): Assignment end date.
+- `is_allocation_active` (INTEGER): Active status (1 for active, 0 for inactive).
 
-### Skill Table (`skills`)
-Catalogs technical and functional skillsets per employee.
-- `id` (Integer, Primary Key)
-- `employee_id` (String, Foreign Key to employees)
-- `skill` (String, Skill Name)
-- `subskill` (String)
-- `experience_numeric` (Float, Experience in years)
-- `experience_level` (String)
-- `competency_level` (String)
+### `skills`
+- `id` (INTEGER, PK): Auto-increment primary key.
+- `employee_id` (VARCHAR, FK): References `employees.employee_id`.
+- `skill` (VARCHAR): Skill name.
+- `score` (DOUBLE PRECISION): Capability rating (0.0 to 5.0).
+- `experience_numeric` (DOUBLE PRECISION): Professional experience in years.
 
-### Competency Table (`competencies`)
-Stores detailed scorecards of employee consulting competencies.
-- `employee_id` (String, Primary Key, Foreign Key to employees)
-- `stakeholder_management_score` (Float)
-- `consultative_guidance_score` (Float)
-- `techno_functional_score` (Float)
-- `communication_score` (Float)
-- `ambiguity_navigation_score` (Float)
-- `capabilities_articulation_score` (Float)
-- `solution_architecture_score` (Float)
-- `project_planning_score` (Float)
+### `competencies`
+- `employee_id` (VARCHAR, PK, FK): References `employees.employee_id`.
+- `stakeholder_management_score` (DOUBLE PRECISION): Level rating.
+- `consultative_guidance_score` (DOUBLE PRECISION): Level rating.
+- `techno_functional_score` (DOUBLE PRECISION): Level rating.
+- `communication_score` (DOUBLE PRECISION): Level rating.
+- `ambiguity_navigation_score` (DOUBLE PRECISION): Level rating.
+- `capabilities_articulation_score` (DOUBLE PRECISION): Level rating.
+- `solution_architecture_score` (DOUBLE PRECISION): Level rating.
+- `project_planning_score` (DOUBLE PRECISION): Level rating.
 
-### Weekly Status Table (`weekly_status`)
-Tracks historical delivery status updates.
-- `id` (Integer, Primary Key)
-- `project_id` (String, Foreign Key to projects)
-- `week_date` (Date)
-- `schedule_status` (String, Green/Amber/Red)
-- `resourcing_status` (String)
-- `budget_status` (String)
-- `highlight` (String)
-- `lowlight` (String)
-
-### Pipeline Table (`pipeline`)
-Tracks Hubspot pipeline deal logs.
-- `id` (Integer, Primary Key)
-- `deal_id` (String)
-- `client` (String)
-- `project_name` (String)
-- `solution` (String)
-- `status` (String)
-- `likely_start_date` (Date)
-- `original_requested_start_date` (Date)
-- `number_of_weeks` (Integer)
-- `probability` (Float)
-- `estimated_value` (Float)
-- `skillset` (String)
-- `comments` (String)
+### `pipeline`
+- `id` (INTEGER, PK): Unique pipeline deal primary key.
+- `client_name` (VARCHAR): Potential client.
+- `required_role` (VARCHAR): Targeted team role.
+- `skillset` (VARCHAR): Required skills list.
+- `likely_start_date` (DATE): Target project start date.
+- `probability` (DOUBLE PRECISION): Close ratio.
+- `expected_fte` (DOUBLE PRECISION): Expected resource FTE count.

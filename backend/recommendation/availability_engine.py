@@ -27,9 +27,21 @@ class AvailabilityEngine:
         # 3. Transition delay component
         max_end = None
         for a in cand.get("allocations", []):
-            if a.is_allocation_active == 1 and a.allocated_end_date:
-                if max_end is None or a.allocated_end_date > max_end:
-                    max_end = a.allocated_end_date
+            is_active = getattr(a, "is_allocation_active", 0)
+            if isinstance(a, dict):
+                is_active = a.get("is_allocation_active", 0)
+            if is_active == 1:
+                a_end = getattr(a, "allocated_end_date", None)
+                if isinstance(a, dict):
+                    a_end = a.get("allocated_end_date", None)
+                if isinstance(a_end, str):
+                    try:
+                        a_end = datetime.date.fromisoformat(a_end)
+                    except ValueError:
+                        a_end = None
+                if a_end:
+                    if max_end is None or a_end > max_end:
+                        max_end = a_end
 
         if max_end is None or max_end <= proj_start:
             delay_days = 0

@@ -15,6 +15,7 @@ from backend.recommendation.ranking_engine import RankingEngine
 from backend.recommendation.explanation_engine import ExplanationEngine
 from backend.recommendation.evaluation import RecommendationEvaluator
 from backend.recommendation.schemas import RecommendationRequest, RecommendationResponse, CandidateRecommendation, ProjectDetail
+from backend.cache.cache_service import cache_service
 
 # Sub-engines
 from backend.recommendation.semantic_engine import SemanticEngine
@@ -128,6 +129,7 @@ class RecommendationService:
             domain=request.domain,
             project_type=request.project_type
         )
+        logger.info(f"[STAGE 8] Semantic Retrieval candidate pool: {len(raw_candidates)}")
 
         # 3. Apply Business Rules Filter
         filtered_candidates = self.rules_engine.filter_candidates(
@@ -152,7 +154,12 @@ class RecommendationService:
             )
 
         # 4. Precompute Skill Rarity scores (IDF)
-        skills_idf, default_idf = self._build_skills_rarity()
+        skills_idf_cache = cache_service.get("precomputed:skills_idf")
+        if skills_idf_cache:
+            skills_idf = skills_idf_cache["skills_idf"]
+            default_idf = skills_idf_cache["default_idf"]
+        else:
+            skills_idf, default_idf = self._build_skills_rarity()
 
         # 5. Precompute Historical Metrics
         emp_ids = [c["employee"].employee_id for c in filtered_candidates]
@@ -164,8 +171,10 @@ class RecommendationService:
         )
 
         # 6. Preload all projects for candidate current project lookup
-        all_active_projects = self.db.query(Project).all()
-        projects_name_map = {p.project_id: f"{p.client_id or 'Client'} - {p.type_of_project or 'Engagement'}" for p in all_active_projects}
+        projects_name_map = cache_service.get("precomputed:projects_name_map")
+        if not projects_name_map:
+            all_active_projects = self.db.query(Project).all()
+            projects_name_map = {p.project_id: f"{p.client_id or 'Client'} - {p.type_of_project or 'Engagement'}" for p in all_active_projects}
 
         # 7. Multi-Strategy feature builder & scoring
         feature_builder = FeatureBuilder(self.config, skills_idf, default_idf)
@@ -236,6 +245,7 @@ class RecommendationService:
             scored_candidates=sorted_scored,
             top_n=request.top_n
         )
+        logger.info(f"[STAGE 9] Final Ranking returned: {len(diverse_scored)} recommendations.")
 
         # 10. Rank, format, and assign confidence levels & enrichment details
         top_recommendations = []

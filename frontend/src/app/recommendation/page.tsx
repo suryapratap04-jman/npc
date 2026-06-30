@@ -108,6 +108,7 @@ interface Project {
   expectedStartDate: string
   demand: string
   rolesNeeded: string[]
+  status: string
 }
 
 function RecommendationWorkspace() {
@@ -151,7 +152,8 @@ function RecommendationWorkspace() {
           projectType: s.project_type || "N/A",
           expectedStartDate: s.start_date || "N/A",
           demand: s.demand || "N/A",
-          rolesNeeded: skillsArray
+          rolesNeeded: skillsArray,
+          status: s.project_status || "N/A"
         }
       })
     }
@@ -358,7 +360,7 @@ function RecommendationWorkspace() {
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.client} - {p.technology} (ID: {p.id})
+                  {p.client} - {p.technology} | Cluster {p.domain} | Start: {p.expectedStartDate} | Status: {p.status}
                 </option>
               ))}
             </select>
@@ -372,7 +374,13 @@ function RecommendationWorkspace() {
         {activeProjectDetails && (
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 bg-muted/20 p-4 rounded-lg border border-border/40 text-xs">
             <div className="space-y-1">
-              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Project Name / Client</span>
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Project Name / ID</span>
+              <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                Pipeline Opportunity #{activeProjectDetails.id}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Client</span>
               <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
                 {activeProjectDetails.client}
               </span>
@@ -388,14 +396,28 @@ function RecommendationWorkspace() {
               <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Industry Domain</span>
               <span className="font-semibold text-foreground text-sm flex items-center gap-1">
                 <Layers className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                {activeProjectDetails.domain}
+                Cluster {activeProjectDetails.domain}
               </span>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Expected Start / Demand</span>
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Expected Start Date</span>
               <span className="font-semibold text-foreground text-sm flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                {activeProjectDetails.expectedStartDate} ({activeProjectDetails.demand} FTE)
+                {activeProjectDetails.expectedStartDate}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Estimated Team Size</span>
+              <span className="font-semibold text-foreground text-sm flex items-center gap-1">
+                <Users className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                {activeProjectDetails.demand} FTE
+              </span>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Request Status</span>
+              <span className="font-semibold text-foreground text-sm flex items-center gap-1">
+                <Activity className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                {activeProjectDetails.status}
               </span>
             </div>
             

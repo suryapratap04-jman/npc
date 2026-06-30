@@ -77,3 +77,15 @@ class BenchmarkResponse(BaseModel):
     benchmark_results: Dict[str, List[CandidateRecommendation]]
     evaluation_metrics: Dict[str, Dict[str, Any]]
     processing_time_ms: float
+
+class PipelineOpportunity(BaseModel):
+    id: str
+    project_name: str
+    client: str
+    technology: str
+    domain: str
+    required_skills: List[str]
+    start_date: str
+    team_size: str
+    status: str
+    project_type: str
