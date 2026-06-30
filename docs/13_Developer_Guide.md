@@ -37,7 +37,7 @@ This guide describes how to set up the development environment, load databases, 
    ```bash
    npm run dev
    ```
-   The client compiles local files and becomes available at `http://localhost:3000`.
+   The client compiles local files and becomes available at `http://localhost:3010`.
 
 ---
 

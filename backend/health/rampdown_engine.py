@@ -1,4 +1,5 @@
 import logging
+import datetime
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from backend.database.models import Skill
@@ -39,7 +40,6 @@ class RampdownEngine:
             else:
                 estimated_release_count = min(1, len(team_employee_ids))
 
-            import datetime
             today = datetime.date.today()
             if 0 <= days_rem <= 14:
                 release_dt = today + datetime.timedelta(days=days_rem)

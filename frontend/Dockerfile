@@ -16,7 +16,7 @@ ENV NEXT_PUBLIC_API_URL=http://localhost:8000
 # Build Next.js application
 RUN npm run build
 
-EXPOSE 3000
+EXPOSE 3010
 
 # Start server
-CMD ["npm", "run", "start"]
+CMD ["npx", "next", "start", "-p", "3010"]

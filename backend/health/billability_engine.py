@@ -1,4 +1,5 @@
 import logging
+import datetime
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from backend.database.models import Timesheet
@@ -36,7 +37,6 @@ class BillabilityEngine:
         # 2. Shadow resources: active team members on this project who have logged 0 billable hours in last 14 days
         shadow_count = 0
         if team_employee_ids:
-            import datetime
             cutoff = datetime.date.today() - datetime.timedelta(days=14)
             
             # Query billable timesheets for team in last 14 days

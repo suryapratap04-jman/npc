@@ -20,11 +20,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     { icon: LayoutDashboard, label: "Go to Executive Dashboard", path: "/dashboard", shortcut: "G D" },
     { icon: UserCheck, label: "Go to Resource Matcher", path: "/recommendation", shortcut: "G R" },
     { icon: ShieldAlert, label: "Go to Project Health Status", path: "/project-health", shortcut: "G H" },
-    { icon: TrendingUp, label: "Go to Forecast & Planning", path: "/forecast", shortcut: "G F" },
-    { icon: MessageSquare, label: "Go to AI Copilot Center", path: "/copilot", shortcut: "G C" },
-    { icon: SearchCode, label: "Go to Advanced Search", path: "/search", shortcut: "G S" },
-    { icon: BarChart3, label: "Go to Operational Reports", path: "/reports", shortcut: "G R" },
-    { icon: Settings, label: "Go to Platform Settings", path: "/settings", shortcut: "G P" }
+    { icon: TrendingUp, label: "Go to Forecast & Planning", path: "/forecast", shortcut: "G F" }
   ]
 
   const filteredItems = items.filter(item =>

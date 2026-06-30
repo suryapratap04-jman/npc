@@ -140,7 +140,7 @@ export const forecastService = {
       
       return {
         month: label,
-        Capacity: Math.round(m.headcount_demand + m.capacity_surplus),
+        Capacity: Math.round(m.headcount_demand + m.capacity_surplus - m.capacity_deficit),
         Demand: Math.round(m.headcount_demand),
         Gap: Math.round(m.capacity_deficit)
       }

@@ -85,14 +85,18 @@ class CandidateRetriever:
     def retrieve_candidates(
         self, 
         required_skills: List[str], 
-        project_id: Optional[str] = None, top_n: int = 50,
+        project_id: Optional[str] = None, 
+        top_n: int = 50,
         project_start_date: Optional[date] = None,
-        project_end_date: Optional[date] = None
+        project_end_date: Optional[date] = None,
+        technology: Optional[str] = None,
+        domain: Optional[str] = None,
+        project_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Retrieves a candidate pool by combining Postgres active employees and Qdrant similarity matches.
         """
-        logger.info(f"Retrieving candidate pool. Skills: {required_skills}, Project: {project_id}")
+        logger.info(f"Retrieving candidate pool. Skills: {required_skills}, Project: {project_id}, Tech: {technology}, Domain: {domain}")
 
         # 1. Fetch active employees from Postgres
         employees = self.db.query(Employee).filter(
@@ -133,7 +137,15 @@ class CandidateRetriever:
         # 3. Hybrid search - Qdrant Employee similarity
         qdrant_scores: Dict[str, float] = {}
         try:
-            query_text = f"Skills requested: {', '.join(required_skills)}"
+            query_parts = [f"Skills requested: {', '.join(required_skills)}"]
+            if technology:
+                query_parts.append(f"Technology: {technology}")
+            if domain:
+                query_parts.append(f"Domain: {domain}")
+            if project_type:
+                query_parts.append(f"Project Type: {project_type}")
+            query_text = ", ".join(query_parts)
+            
             from backend.cache.cache_keys import make_embedding_key
             from backend.cache.cache_service import cache_service, TTL_EMBEDDING, TTL_SEARCH
             

@@ -41,7 +41,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const removeToast = useToastStore((s) => s.removeToast)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   
   // Notification and profile dropdown toggle state
@@ -62,13 +61,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   const menuItems = [
     { id: "dashboard", label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { id: "recommendation", label: "Recommendation", path: "/recommendation", icon: UserCheck },
+    { id: "recommendation", label: "Resource Recommendation", path: "/recommendation", icon: UserCheck },
     { id: "project-health", label: "Project Health", path: "/project-health", icon: ShieldAlert },
-    { id: "forecast", label: "Forecast", path: "/forecast", icon: TrendingUp },
-    { id: "copilot", label: "Copilot", path: "/copilot", icon: MessageSquare },
-    { id: "search", label: "Search", path: "/search", icon: Search },
-    { id: "reports", label: "Reports", path: "/reports", icon: BarChart3 },
-    { id: "settings", label: "Settings", path: "/settings", icon: Settings },
+    { id: "forecast", label: "Capacity & Forecast", path: "/forecast", icon: TrendingUp },
   ]
 
   const activeItem = menuItems.find(
@@ -341,15 +336,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             {/* Theme switcher */}
             <ThemeToggle />
 
-            {/* AI Insights Sidebar Toggle */}
-            <Button
-              variant={isRightPanelOpen ? "secondary" : "ghost"}
-              onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md border border-border bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-sm"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
-              <span className="hidden sm:inline">AI Insights</span>
-            </Button>
+
 
             {/* User Profile avatar dropdown */}
             <div className="relative">
@@ -411,78 +398,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </div>
           </main>
 
-          {/* 4. Right AI Context Panel (Sliding collapsible sidepanel) */}
-          <AnimatePresence>
-            {isRightPanelOpen && (
-              <motion.aside
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 340, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ type: "spring", damping: 30, stiffness: 250 }}
-                className="hidden lg:flex flex-col h-full border-l border-border bg-card/30 backdrop-blur-md w-[340px] shrink-0"
-              >
-                {/* Panel Header */}
-                <div className="flex items-center justify-between p-4 border-b border-border h-14 shrink-0">
-                  <div className="flex items-center gap-2 font-semibold text-sm">
-                    <Sparkles className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
-                    <span>AI Copilot Insights</span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted/50" onClick={() => setIsRightPanelOpen(false)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Panel Chat conversation placeholder list */}
-                <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs font-sans">
-                  <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-lg p-3.5 text-muted-foreground space-y-2.5">
-                    <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-semibold">
-                      <Info className="h-3.5 w-3.5 shrink-0" />
-                      <span>Active Page Context</span>
-                    </div>
-                    <p className="leading-relaxed">
-                      You are currently viewing the <strong className="text-foreground">{activeItem.label}</strong> page.
-                    </p>
-                    <p className="leading-relaxed">
-                      Ask questions below to get contextual resource summaries, budget risk alerts, and pipeline diagnostic estimations.
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-1.5 max-w-[85%] rounded-2xl bg-muted/60 p-3 ml-auto text-foreground self-end font-medium">
-                      <p className="leading-relaxed">Which active projects are currently at risk?</p>
-                    </div>
-
-                    <div className="flex flex-col gap-2 max-w-[90%] rounded-2xl bg-card border border-border p-3.5 mr-auto self-start shadow-sm ring-1 ring-black/5 dark:ring-white/5">
-                      <div className="flex items-center gap-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        <span>Copilot Assistant</span>
-                      </div>
-                      <p className="leading-relaxed text-muted-foreground">
-                        I identified <strong className="text-foreground font-semibold">1 critical project</strong> flagged as Red (High Risk) due to allocation bottlenecks:
-                      </p>
-                      <div className="mt-1.5 p-2 rounded-md bg-muted/30 border border-border">
-                        <span className="font-semibold text-foreground">Project CLI-201</span>
-                        <span className="ml-2 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-red-500/10 text-red-500 rounded">Critical Delay</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Panel Quick chat textbox input */}
-                <div className="p-3 border-t border-border bg-card/20 shrink-0">
-                  <div className="flex items-center gap-2 bg-muted/60 rounded-full border border-border px-3 py-1 shadow-inner hover:border-muted-foreground/35 transition-all">
-                    <input
-                      placeholder="Ask the copilot..."
-                      className="flex-1 bg-transparent border-0 outline-none text-xs placeholder:text-muted-foreground text-foreground h-7"
-                    />
-                    <Button size="icon" className="h-7 w-7 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0">
-                      <Send className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </motion.aside>
-            )}
-          </AnimatePresence>
+          {/* Right panel removed */}
         </div>
       </div>
 

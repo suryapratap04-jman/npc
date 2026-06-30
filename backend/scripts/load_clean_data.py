@@ -101,6 +101,17 @@ def seed_database():
         # 8. Pipeline
         logger.info("Loading pipeline_clean.csv...")
         df_pipe = pd.read_csv(CLEANED_DATA_DIR / "pipeline_clean.csv")
+        
+        # Filter out completely empty placeholder rows
+        df_pipe = df_pipe[~((df_pipe["client"] == "Unknown") & (df_pipe["skillset"].isnull() | (df_pipe["skillset"].str.strip() == "")))]
+        
+        # Rename columns to match Pipeline schema model properties
+        df_pipe = df_pipe.rename(columns={
+            "Unnamed: 15": "percentage",
+            "available": "percentage_available",
+            "skillset_match_complete_partial_no": "skillset_match"
+        })
+        
         df_pipe = clean_df_for_db(df_pipe, ["request_received", "original_requested_start_date", "likely_start_date"])
         db.bulk_insert_mappings(Pipeline, df_pipe.to_dict(orient="records"))
         logger.info(f"Loaded {len(df_pipe)} pipeline records.")

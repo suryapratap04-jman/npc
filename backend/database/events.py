@@ -21,9 +21,10 @@ def invalidate_project_related_cache(mapper, connection, target):
     cache_service.invalidate_namespace(NS_SEARCH)
 
 def invalidate_pipeline_related_cache(mapper, connection, target):
-    logger.info(f"Database event: Invalidation triggered on namespace recommendation, forecast, pipeline by model {target.__class__.__name__}")
+    logger.info(f"Database event: Invalidation triggered on namespace recommendation, forecast, pipeline, dashboard by model {target.__class__.__name__}")
     cache_service.invalidate_namespace(NS_RECOMMENDATION)
     cache_service.invalidate_namespace(NS_FORECAST)
+    cache_service.invalidate_namespace(NS_DASHBOARD)
     cache_service.invalidate_namespace("pipeline")
 
 # Register listeners for Employee-related models

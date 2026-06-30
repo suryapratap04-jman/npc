@@ -125,7 +125,7 @@ docker-compose up --build -d
 
 ## 24. Running without Docker
 - Run backend locally on port `8000`.
-- Run frontend using `npm run dev` on port `3000`.
+- Run frontend using `npm run dev` on port `3010`.
 
 ## 25. Data Pipeline
 Execute raw CSV clean and load:

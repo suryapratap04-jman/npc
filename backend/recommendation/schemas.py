@@ -9,23 +9,67 @@ class RecommendationRequest(BaseModel):
     project_start_date: Optional[str] = Field("2026-08-01", description="Target start date formatted as YYYY-MM-DD.")
     top_n: int = Field(10, ge=1, le=50, description="Number of top candidates to return.")
     strategy: Optional[str] = Field("hybrid_v1", description="Recommendation strategy algorithm to use.")
+    
+    # Redesigned and Connected Filters
+    department: Optional[str] = Field("all", description="Filter by department name.")
+    experience_range: Optional[str] = Field("all", description="Filter by experience years (junior, mid, senior, all).")
+    availability_window: Optional[str] = Field("all", description="Filter by business-focused availability window.")
+    location: Optional[str] = Field("all", description="Filter by employee location.")
+    technology: Optional[str] = Field(None, description="Filter by project technology / solution.")
+    domain: Optional[str] = Field(None, description="Filter by project industry domain / cluster.")
 
 class CandidateRecommendation(BaseModel):
     employee_id: str
+    name: str
+    email: str
     job_name: str
     department_name: str
+    location: str
+    experience_years: float
+    skills: List[str]
+    competencies: List[str]
+    matching_skills: List[str]
+    current_allocation: float
+    utilization_percentage: float
+    availability_date: str
+    current_project: Optional[str] = None
     final_score: float
     rank: int
+    confidence: Optional[str] = "Medium"
+    why_recommended: str
+    strengths: List[str]
+    potential_risks: List[str]
+    
+    # Detailed scoring breakdown
+    skill_match: float
+    competency_match: float
+    experience_score: float
+    availability_score: float
+    historical_score: float
+    semantic_score: float
+    
+    # Backwards compatibility fields
     category_scores: Dict[str, float]
     strategy_scores: Optional[Dict[str, float]] = None
-    confidence: Optional[str] = "Medium"
-    availability_date: str
-    utilization_percentage: float
-    matching_skills: List[str]
+
+class ProjectDetail(BaseModel):
+    project_id: str
+    name: str
+    client: str
+    technology: Optional[str] = None
+    domain: Optional[str] = None
+    required_skills: List[str]
+    project_type: str
+    expected_start_date: str
+    demand: str
 
 class RecommendationResponse(BaseModel):
-    recommendations: List[CandidateRecommendation]
+    project: Optional[ProjectDetail] = None
+    summary: Optional[str] = None
+    candidates: List[CandidateRecommendation] = Field(default_factory=list)
+    recommendations: List[CandidateRecommendation] = Field(default_factory=list) # Backwards compatibility
     explanation: str
+    confidence: Optional[str] = "Medium"
     processing_time_ms: float
     model_version: str = "v1"
 

@@ -214,7 +214,7 @@ export default function DashboardPage() {
                 {card.color === "blue" && <TrendingUp className="h-4 w-4 text-blue-500" />}
               </div>
               <div className="text-2xl font-bold font-sans tracking-tight text-foreground">
-                {card.value}
+                {card.value && card.value !== "N/A" && card.value !== "" ? card.value : "Insufficient Data"}
               </div>
               <div className="flex items-center justify-between mt-1 text-[11px] font-sans">
                 <span className={`font-semibold ${
@@ -244,7 +244,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="w-full flex-1">
-            {mounted ? (
+            {mounted && data.capacityChart && data.capacityChart.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={data.capacityChart} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <defs>
@@ -265,6 +265,7 @@ export default function DashboardPage() {
                   <XAxis dataKey="month" tickLine={false} axisLine={false} style={{ fontSize: "10px", fill: "var(--muted-foreground)", fontFamily: "sans-serif" }} />
                   <YAxis tickLine={false} axisLine={false} style={{ fontSize: "10px", fill: "var(--muted-foreground)", fontFamily: "sans-serif" }} />
                   <Tooltip 
+                    formatter={(value: any, name: any) => [`${Math.round(value)} FTE`, name]}
                     contentStyle={{ 
                       backgroundColor: "var(--card)", 
                       borderColor: "var(--border)",
@@ -281,8 +282,8 @@ export default function DashboardPage() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[260px] flex items-center justify-center text-muted-foreground text-xs font-sans">
-                Loading capacity visualizer...
+              <div className="h-[260px] flex items-center justify-center text-muted-foreground text-xs font-sans bg-muted/5 border border-dashed border-border rounded-lg">
+                Insufficient Data
               </div>
             )}
           </div>
@@ -346,64 +347,70 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3.5">
-            {data.projectHealth.map((project) => {
-              const isRed = project.status === "Red"
-              const isAmber = project.status === "Amber"
-              return (
-                <div 
-                  key={project.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border border-border/80 bg-muted/10 hover:bg-muted/30 transition-all"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-xs text-foreground font-sans">{project.name}</span>
-                      <span className="text-[10px] text-muted-foreground font-sans font-medium">({project.client})</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
-                        isRed 
-                          ? "bg-red-500/10 text-red-500" 
-                          : isAmber 
-                          ? "bg-amber-500/10 text-amber-500" 
-                          : "bg-emerald-500/10 text-emerald-500"
-                      }`}>
-                        {project.status}
-                      </span>
+            {data.projectHealth && data.projectHealth.length > 0 ? (
+              data.projectHealth.map((project) => {
+                const isRed = project.status === "Red"
+                const isAmber = project.status === "Amber"
+                return (
+                  <div 
+                    key={project.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border border-border/80 bg-muted/10 hover:bg-muted/30 transition-all"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-xs text-foreground font-sans">{project.name}</span>
+                        <span className="text-[10px] text-muted-foreground font-sans font-medium">({project.client})</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
+                          isRed 
+                            ? "bg-red-500/10 text-red-500" 
+                            : isAmber 
+                            ? "bg-amber-500/10 text-amber-500" 
+                            : "bg-emerald-500/10 text-emerald-500"
+                        }`}>
+                          {project.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-sans">
+                        PM: <span className="text-foreground">{project.PM}</span> &bull; Allocated FTEs: <span className="text-foreground">{project.staffCount}</span>
+                      </p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground font-sans">
-                      PM: <span className="text-foreground">{project.PM}</span> &bull; Allocated FTEs: <span className="text-foreground">{project.staffCount}</span>
-                    </p>
-                  </div>
 
-                  <div className="flex items-center gap-4 shrink-0 sm:w-64">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex justify-between text-[10px] font-semibold text-muted-foreground font-sans">
-                        <span>Progress</span>
-                        <span className="text-foreground">{project.progress}%</span>
+                    <div className="flex items-center gap-4 shrink-0 sm:w-64">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex justify-between text-[10px] font-semibold text-muted-foreground font-sans">
+                          <span>Progress</span>
+                          <span className="text-foreground">{project.progress}%</span>
+                        </div>
+                        <div className="w-full bg-border rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${
+                              isRed ? "bg-red-500" : isAmber ? "bg-amber-500" : "bg-emerald-500"
+                            }`}
+                            style={{ width: `${project.progress}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full bg-border rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${
-                            isRed ? "bg-red-500" : isAmber ? "bg-amber-500" : "bg-emerald-500"
-                          }`}
-                          style={{ width: `${project.progress}%` }}
-                        />
-                      </div>
+                      
+                      {isRed ? (
+                        <Link href={`/recommendation?project=${project.id}`}>
+                          <Button variant="outline" size="xs" className="h-7 border-red-500/20 text-red-500 hover:bg-red-500/5 font-semibold text-[10px]">
+                            Resolve Gap
+                          </Button>
+                        </Link>
+                      ) : (
+                        <div className="w-20 text-right text-[10px] font-semibold text-muted-foreground truncate font-sans">
+                          {project.riskDetail}
+                        </div>
+                      )}
                     </div>
-                    
-                    {isRed ? (
-                      <Link href={`/recommendation?project=${project.id}`}>
-                        <Button variant="outline" size="xs" className="h-7 border-red-500/20 text-red-500 hover:bg-red-500/5 font-semibold text-[10px]">
-                          Resolve Gap
-                        </Button>
-                      </Link>
-                    ) : (
-                      <div className="w-20 text-right text-[10px] font-semibold text-muted-foreground truncate font-sans">
-                        {project.riskDetail}
-                      </div>
-                    )}
                   </div>
-                </div>
-              )
-            })}
+                )
+              })
+            ) : (
+              <div className="py-12 flex items-center justify-center text-muted-foreground text-xs font-sans bg-muted/5 border border-dashed border-border rounded-lg">
+                Insufficient Data
+              </div>
+            )}
           </div>
         </div>
 
@@ -415,30 +422,36 @@ export default function DashboardPage() {
               <h3 className="font-semibold text-sm text-foreground font-sans">Upcoming Bench Roll-offs</h3>
             </div>
             <div className="space-y-3.5">
-              {data.availabilityTimeline.map((item) => {
-                const isNear = item.daysRemaining <= 10
-                return (
-                  <div 
-                    key={item.id}
-                    className="flex justify-between items-start gap-2 text-xs font-sans pb-3.5 border-b border-border/40 last:border-b-0 last:pb-0"
-                  >
-                    <div>
-                      <h4 className="font-semibold text-foreground">{item.name}</h4>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{item.skill}</p>
-                      <p className="text-[9px] text-muted-foreground/80 mt-1">
-                        Currently: {item.project} &bull; Roll-off: {item.date}
-                      </p>
+              {data.availabilityTimeline && data.availabilityTimeline.length > 0 ? (
+                data.availabilityTimeline.map((item) => {
+                  const isNear = item.daysRemaining <= 10
+                  return (
+                    <div 
+                      key={item.id}
+                      className="flex justify-between items-start gap-2 text-xs font-sans pb-3.5 border-b border-border/40 last:border-b-0 last:pb-0"
+                    >
+                      <div>
+                        <h4 className="font-semibold text-foreground">{item.name}</h4>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{item.skill}</p>
+                        <p className="text-[9px] text-muted-foreground/80 mt-1">
+                          Currently: {item.project} &bull; Roll-off: {item.date}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        isNear 
+                          ? "bg-red-500/10 text-red-500" 
+                          : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                      }`}>
+                        {item.daysRemaining} days left
+                      </span>
                     </div>
-                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                      isNear 
-                        ? "bg-red-500/10 text-red-500" 
-                        : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                    }`}>
-                      {item.daysRemaining} days left
-                    </span>
-                  </div>
-                )
-              })}
+                  )
+                })
+              ) : (
+                <div className="py-12 flex items-center justify-center text-muted-foreground text-xs font-sans bg-muted/5 border border-dashed border-border rounded-lg">
+                  Insufficient Data
+                </div>
+              )}
             </div>
           </div>
 
@@ -465,41 +478,47 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3.5">
-            {data.pipelineDeals.map((deal) => (
-              <div 
-                key={deal.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg border border-border/80 bg-muted/5 hover:bg-muted/15 transition-all"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-xs text-foreground font-sans">{deal.project}</span>
-                    <span className="text-[10px] text-muted-foreground font-sans font-medium">({deal.client})</span>
+            {data.pipelineDeals && data.pipelineDeals.length > 0 ? (
+              data.pipelineDeals.map((deal) => (
+                <div 
+                  key={deal.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg border border-border/80 bg-muted/5 hover:bg-muted/15 transition-all"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-xs text-foreground font-sans">{deal.project}</span>
+                      <span className="text-[10px] text-muted-foreground font-sans font-medium">({deal.client})</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {deal.roles.map((r, i) => (
+                        <span key={i} className="px-1.5 py-0.5 rounded bg-muted text-[9px] text-muted-foreground font-medium border border-border/40">
+                          {r}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {deal.roles.map((r, i) => (
-                      <span key={i} className="px-1.5 py-0.5 rounded bg-muted text-[9px] text-muted-foreground font-medium border border-border/40">
-                        {r}
-                      </span>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-6 text-xs font-sans shrink-0">
-                  <div className="text-left sm:text-right">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Deal Size</p>
-                    <p className="font-semibold text-foreground mt-0.5">{deal.size}</p>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Probability</p>
-                    <p className="font-semibold text-emerald-500 mt-0.5">{deal.probability}</p>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Start Month</p>
-                    <p className="font-semibold text-foreground mt-0.5">{deal.start}</p>
+                  <div className="flex items-center justify-between sm:justify-end gap-6 text-xs font-sans shrink-0">
+                    <div className="text-left sm:text-right">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Deal Size</p>
+                      <p className="font-semibold text-foreground mt-0.5">{deal.size}</p>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Probability</p>
+                      <p className="font-semibold text-emerald-500 mt-0.5">{deal.probability}</p>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Start Month</p>
+                      <p className="font-semibold text-foreground mt-0.5">{deal.start}</p>
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="py-12 flex items-center justify-center text-muted-foreground text-xs font-sans bg-muted/5 border border-dashed border-border rounded-lg">
+                Insufficient Data
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -511,22 +530,28 @@ export default function DashboardPage() {
               <h3 className="font-semibold text-sm text-foreground font-sans">Recent Activity</h3>
             </div>
             <div className="space-y-4">
-              {data.recentActivity.map((log) => {
-                const isRisk = log.category === "risk"
-                const isAlloc = log.category === "allocation"
-                return (
-                  <div key={log.id} className="flex gap-3 text-xs font-sans">
-                    <div className="mt-0.5 shrink-0">
-                      <div className={`h-2 w-2 rounded-full mt-1.5 ${
-                        isRisk ? "bg-red-500" : isAlloc ? "bg-blue-500" : "bg-muted-foreground"
-                      }`} />
+              {data.recentActivity && data.recentActivity.length > 0 ? (
+                data.recentActivity.map((log) => {
+                  const isRisk = log.category === "risk"
+                  const isAlloc = log.category === "allocation"
+                  return (
+                    <div key={log.id} className="flex gap-3 text-xs font-sans">
+                      <div className="mt-0.5 shrink-0">
+                        <div className={`h-2 w-2 rounded-full mt-1.5 ${
+                          isRisk ? "bg-red-500" : isAlloc ? "bg-blue-500" : "bg-muted-foreground"
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="text-foreground leading-normal">{log.text}</p>
+                        <span className="text-[10px] text-muted-foreground font-medium block mt-1">{log.time}</span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-foreground leading-normal">{log.text}</p>
-                      <span className="text-[10px] text-muted-foreground font-medium block mt-1">{log.time}</span>
-                    </div>
-                  </div>
-                )}
+                  )
+                })
+              ) : (
+                <div className="py-12 flex items-center justify-center text-muted-foreground text-xs font-sans bg-muted/5 border border-dashed border-border rounded-lg">
+                  Insufficient Data
+                </div>
               )}
             </div>
           </div>

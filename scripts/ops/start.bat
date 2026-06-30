@@ -25,7 +25,7 @@ if !errorlevel! equ 0 (
     echo ====================================================================
     echo AI Resource Management Platform is running!
     echo.
-    echo - Next.js Frontend : http://localhost:3000
+    echo - Next.js Frontend : http://localhost:3010
     echo - FastAPI Backend  : http://localhost:8000
     echo - Qdrant Dashboard : http://localhost:6333/dashboard
     echo - Ollama API       : http://localhost:11434

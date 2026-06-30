@@ -1,5 +1,4 @@
 import { fetchAPI } from "./api"
-import { getEmployeeName } from "./dashboard.service"
 
 export interface RecommendationRequest {
   project_id?: string
@@ -9,34 +8,67 @@ export interface RecommendationRequest {
   project_start_date?: string
   top_n: number
   strategy?: string
+  
+  // Redesigned and Connected Filters
+  department?: string
+  experience_range?: string
+  availability_window?: string
+  location?: string
+  technology?: string
+  domain?: string
 }
 
 export interface CandidateRecommendation {
   employee_id: string
+  name: string
+  email: string
   job_name: string
   department_name: string
-  final_score: float
-  rank: int
-  category_scores: Record<string, number>
-  strategy_scores?: Record<string, number>
-  confidence?: string
+  location: string
+  experience_years: number
+  skills: string[]
+  competencies: string[]
+  current_allocation: number
   availability_date: string
-  utilization_percentage: number
-  matching_skills: string[]
-  // Extracted details
-  name?: string
-  skills?: string[]
-  competencies?: string[]
-  experience_years?: number
-  email?: string
+  current_project: string
+  final_score: number
+  rank: number
+  confidence?: string
+  why_recommended: string
+  strengths: string[]
+  potential_risks: string[]
+  
+  // Detailed scoring breakdown
+  skill_match: number
+  competency_match: number
+  experience_score: number
+  availability_score: number
+  historical_score: number
+  semantic_score: number
+  
+  category_scores?: Record<string, number>
+  strategy_scores?: Record<string, number>
 }
 
-type float = number
-type int = number
+export interface ProjectDetail {
+  project_id: string
+  name: string
+  client: string
+  technology?: string
+  domain?: string
+  required_skills: string[]
+  project_type: string
+  expected_start_date: string
+  demand: string
+}
 
 export interface RecommendationResponse {
-  recommendations: CandidateRecommendation[]
+  project?: ProjectDetail
+  summary?: string
+  candidates: CandidateRecommendation[]
+  recommendations: CandidateRecommendation[] // Backwards compatibility
   explanation: string
+  confidence?: string
   processing_time_ms: number
   model_version: string
 }
@@ -50,6 +82,12 @@ export interface ProjectSummary {
   start_date: string
   end_date: string
   skillset?: string
+  
+  // Enriched pipeline details
+  technology?: string
+  domain?: string
+  project_type?: string
+  demand?: string
 }
 
 export const recommendationService = {
@@ -66,36 +104,21 @@ export const recommendationService = {
       project_manager: p.em || "N/A",
       start_date: p.likely_start_date || "N/A",
       end_date: "N/A",
-      skillset: p.skillset
+      skillset: p.skillset,
+      
+      // Map new project demand properties
+      technology: p.solution || "N/A",
+      domain: p.cluster || "N/A",
+      project_type: p.request_type || "N/A",
+      demand: p.resources_requested || "N/A"
     }))
   },
 
   async getRecommendations(req: RecommendationRequest): Promise<RecommendationResponse> {
-    // 1. Fetch recommendations list
-    const response = await fetchAPI<RecommendationResponse>("/api/recommend/resources", {
+    // Return fully enriched recommendation list from backend directement
+    return await fetchAPI<RecommendationResponse>("/api/recommend/resources", {
       method: "POST",
       body: JSON.stringify(req)
     })
-
-    // 2. Fetch employee records to fill missing detail fields (like names, skills, etc.)
-    const employees = await fetchAPI<any[]>("/api/employees?limit=100")
-
-    // Map candidate names from the relational DB
-    const enrichedRecommendations = response.recommendations.map(candidate => {
-      const empMatch = employees.find(e => e.employee_id === candidate.employee_id)
-      return {
-        ...candidate,
-        name: getEmployeeName(candidate.employee_id),
-        skills: empMatch && empMatch.skills && empMatch.skills.length > 0 ? empMatch.skills : candidate.matching_skills,
-        competencies: empMatch && empMatch.competencies ? empMatch.competencies : [],
-        experience_years: empMatch && empMatch.experience_years ? empMatch.experience_years : 4,
-        email: empMatch && empMatch.email ? empMatch.email : `${candidate.employee_id}@company.com`
-      }
-    })
-
-    return {
-      ...response,
-      recommendations: enrichedRecommendations
-    }
   }
 }

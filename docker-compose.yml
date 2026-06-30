@@ -121,7 +121,7 @@ services:
     container_name: resource-frontend
     restart: always
     ports:
-      - "3000:3000"
+      - "3010:3010"
     networks:
       - resource-network
     environment:

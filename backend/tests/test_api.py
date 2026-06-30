@@ -17,6 +17,9 @@ def test_api_health_route():
         assert response.status_code in [200, 503], f"Unexpected health API status: {response.status_code}"
         
         json_data = response.json()
+        if response.status_code == 503:
+            json_data = json_data.get("detail", {})
+            
         assert "relational_db" in json_data
         assert "vector_db" in json_data
         assert "llm_orchestrator" in json_data

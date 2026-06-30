@@ -11,7 +11,7 @@ The platform uses Docker Compose (`docker-compose.yml`) to orchestrate six inter
 - **`qdrant`** (`resource-qdrant`): Vector search engine. Ports `6333:6333` and `6334:6334`.
 - **`ollama`** (`resource-ollama`): Local LLM runtime. Port `11434:11434`.
 - **`backend`** (`resource-backend`): FastAPI service gate. Port `8000:8000`.
-- **`frontend`** (`resource-frontend`): Next.js SPA client app. Port `3000:3000`.
+- **`frontend`** (`resource-frontend`): Next.js SPA client app. Port `3010:3010`.
 
 ---
 

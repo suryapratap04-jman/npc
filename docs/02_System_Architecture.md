@@ -100,7 +100,7 @@ graph TD
 ```mermaid
 graph TD
     subgraph Custom Bridge: resource-network
-        frontend[resource-frontend :3000]
+        frontend[resource-frontend :3010]
         backend[resource-backend :8000]
         redis[resource-redis :6379]
         db[resource-postgres :5432]

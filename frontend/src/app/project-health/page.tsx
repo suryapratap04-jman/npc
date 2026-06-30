@@ -175,11 +175,11 @@ export default function ProjectHealthPage() {
     status: p.overall_health,
     progress: p.overall_health === "Green" ? 92 : p.overall_health === "Amber" ? 75 : 45,
     PM: p.PM || "Sarah Jenkins",
-    staffCount: p.staffCount || 6,
-    billability: p.billability || 85,
-    utilization: p.utilization || 90,
+    staffCount: p.staffCount || 0,
+    billability: p.billability || 0,
+    utilization: p.utilization || 0,
     riskCategory: p.overall_health === "Red" ? "Staffing" : p.overall_health === "Amber" ? "Timeline" : "None",
-    riskScore: Math.round(p.risk_score * 100)
+    riskScore: Math.round(p.risk_score)
   }))
 
   const redCount = projects.filter(p => p.status === "Red").length
